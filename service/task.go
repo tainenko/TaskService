@@ -14,8 +14,9 @@ func NewTaskService(q *query.Query) *TaskService {
 	return &TaskService{q: q}
 }
 
-func (s *TaskService) GetTasks(ctx context.Context) ([]*model.Task, error) {
-	return s.q.Task.WithContext(ctx).Find()
+func (s *TaskService) GetTasks(ctx context.Context, page, pageSize int) ([]*model.Task, error) {
+	offset := (page - 1) * pageSize
+	return s.q.Task.WithContext(ctx).Offset(offset).Limit(pageSize).Find()
 }
 
 func (s *TaskService) CreateTask(ctx context.Context, task *model.Task) error {
