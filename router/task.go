@@ -5,7 +5,7 @@ import (
 	"github/TaskService/handler"
 )
 
-func InitTaskRoute(r *gin.Engine) {
+func SetTaskRoute(r *gin.Engine) {
 	task := r.Group("/")
 	task.GET("/tasks", handler.GetTasks)
 	task.POST("/tasks", handler.CreateTask)

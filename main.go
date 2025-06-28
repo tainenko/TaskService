@@ -16,7 +16,7 @@ func main() {
 			"message": "Welcome to the API",
 		})
 	})
-	router.InitTaskRoute(r)
+	router.SetTaskRoute(r)
 
 	// Run the server on port 8080
 	r.Run(":8080")
