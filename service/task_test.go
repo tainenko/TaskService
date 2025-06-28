@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github/TaskService/dao/model"
 	"github/TaskService/dao/query"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"reflect"
 	"testing"
 )
@@ -29,30 +32,27 @@ func TestNewTaskService(t *testing.T) {
 }
 
 func TestTaskService_CreateTask(t *testing.T) {
-	type fields struct {
-		q *query.Query
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	type args struct {
-		ctx  context.Context
-		task *model.Task
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO \"task\"").
+		WithArgs("name", 1, nil).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	defer db.Close()
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		Conn:             db,
+		WithoutReturning: true,
+	}), &gorm.Config{})
+
+	q := query.Use(gormDB)
+	s := &TaskService{
+		q: q,
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &TaskService{
-				q: tt.fields.q,
-			}
-			if err := s.CreateTask(tt.args.ctx, tt.args.task); (err != nil) != tt.wantErr {
-				t.Errorf("CreateTask() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	if err := s.CreateTask(context.Background(), &model.Task{Name: "name", Status: 1}); err != nil {
+		t.Errorf("CreateTask() error = %v", err)
 	}
 }
 
