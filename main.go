@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github/TaskService/router"
 	"net/http"
 )
 
@@ -15,6 +16,7 @@ func main() {
 			"message": "Welcome to the API",
 		})
 	})
+	router.InitTaskRoute(r)
 
 	// Run the server on port 8080
 	r.Run(":8080")
