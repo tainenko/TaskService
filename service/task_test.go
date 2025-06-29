@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 	"github/TaskService/dao/model"
 	"github/TaskService/dao/query"
 	"gorm.io/driver/postgres"
@@ -91,36 +92,33 @@ func TestTaskService_DeleteTask(t *testing.T) {
 }
 
 func TestTaskService_GetTaskByID(t *testing.T) {
-	type fields struct {
-		q *query.Query
+	taskID := int32(1)
+	expected := &model.Task{
+		ID:        taskID,
+		Name:      "Test Task",
+		Status:    1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	type args struct {
-		ctx context.Context
-		id  int32
+
+	rows := sqlmock.NewRows([]string{"id", "name", "status", "created_at", "updated_at", "deleted_at"}).
+		AddRow(expected.ID, expected.Name, expected.Status, expected.CreatedAt, expected.UpdatedAt, nil)
+
+	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."id" = \$1 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" LIMIT \$2$`).
+		WithArgs(1, 1).
+		WillReturnRows(rows)
+
+	s := &TaskService{
+		q: q,
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *model.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &TaskService{
-				q: tt.fields.q,
-			}
-			got, err := s.GetTaskByID(tt.args.ctx, tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetTaskByID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTaskByID() got = %v, want %v", got, tt.want)
-			}
-		})
+
+	actual, err := s.GetTaskByID(context.Background(), taskID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected.Name, actual.Name)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("GetTaskByID(): %s", err)
 	}
 }
 
