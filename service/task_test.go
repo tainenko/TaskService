@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github/TaskService/dao/query"
+	"github/TaskService/dao"
 	"github/TaskService/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -18,7 +18,7 @@ import (
 
 func TestNewTaskService(t *testing.T) {
 	type args struct {
-		q *query.Query
+		q *dao.Query
 	}
 	tests := []struct {
 		name string
@@ -39,7 +39,7 @@ func TestNewTaskService(t *testing.T) {
 var (
 	mockDB *sql.DB
 	mock   sqlmock.Sqlmock
-	q      *query.Query
+	q      *dao.Query
 )
 
 func TestMain(m *testing.M) {
@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to gorm DB: %s", err)
 	}
 
-	q = query.Use(gormDB)
+	q = dao.Use(gormDB)
 	os.Exit(m.Run())
 }
 
