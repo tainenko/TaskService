@@ -2,13 +2,17 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github/TaskService/dao/model"
 	"github/TaskService/dao/query"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewTaskService(t *testing.T) {
@@ -31,23 +35,38 @@ func TestNewTaskService(t *testing.T) {
 	}
 }
 
-func TestTaskService_CreateTask(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	mock.ExpectBegin()
-	mock.ExpectExec("INSERT INTO \"task\"").
-		WithArgs("name", 1, nil).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
-	defer db.Close()
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn:             db,
-		WithoutReturning: true,
-	}), &gorm.Config{})
+var (
+	mockDB *sql.DB
+	mock   sqlmock.Sqlmock
+	q      *query.Query
+)
 
-	q := query.Use(gormDB)
+func TestMain(m *testing.M) {
+	var err error
+	mockDB, mock, err = sqlmock.New()
+	if err != nil {
+		log.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockDB.Close()
+
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: mockDB,
+	}), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to connect to gorm DB: %s", err)
+	}
+
+	q = query.Use(gormDB)
+	os.Exit(m.Run())
+}
+
+func TestTaskService_CreateTask(t *testing.T) {
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "task"`).
+		WithArgs("name", 1, nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), time.Now()))
+	mock.ExpectCommit()
+
 	s := &TaskService{
 		q: q,
 	}
