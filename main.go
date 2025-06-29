@@ -2,11 +2,17 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github/TaskService/dao"
 	"github/TaskService/router"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"net/http"
 )
 
 func main() {
+	gormdb, _ := gorm.Open(postgres.Open("postgres://postgres:admin@localhost:5432/postgres"))
+	dao.SetDefault(gormdb)
+
 	// Create default gin router
 	r := gin.Default()
 
