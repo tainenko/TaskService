@@ -158,29 +158,37 @@ func TestTaskService_GetTasks(t *testing.T) {
 }
 
 func TestTaskService_UpdateTask(t *testing.T) {
-	type fields struct {
-		q *query.Query
+	taskID := int32(1)
+	updated := &model.Task{
+		ID:        taskID,
+		Name:      "Test Task",
+		Status:    1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	type args struct {
-		ctx  context.Context
-		task *model.Task
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"created_at"=\$3,"updated_at"=\$4 WHERE "task"."id" = \$5 AND "task"."deleted_at" IS NULL AND "id" = \$6$`).
+		WithArgs(
+			updated.Name,
+			updated.Status,
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+			updated.ID,
+			updated.ID,
+		).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	s := &TaskService{
+		q: q,
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &TaskService{
-				q: tt.fields.q,
-			}
-			if err := s.UpdateTask(tt.args.ctx, tt.args.task); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateTask() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+
+	err := s.UpdateTask(context.Background(), updated)
+
+	assert.NoError(t, err)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("UpdateTask(): %s", err)
 	}
 }
