@@ -76,30 +76,17 @@ func TestTaskService_CreateTask(t *testing.T) {
 }
 
 func TestTaskService_DeleteTask(t *testing.T) {
-	type fields struct {
-		q *query.Query
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "task"`).
+		WithArgs(sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	s := &TaskService{
+		q: q,
 	}
-	type args struct {
-		ctx context.Context
-		id  int32
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &TaskService{
-				q: tt.fields.q,
-			}
-			if err := s.DeleteTask(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
-				t.Errorf("DeleteTask() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	if err := s.DeleteTask(context.Background(), 1); err != nil {
+		t.Errorf("DeleteTask() error = %v", err)
 	}
 }
 
