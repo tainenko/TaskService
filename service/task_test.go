@@ -123,37 +123,52 @@ func TestTaskService_GetTaskByID(t *testing.T) {
 }
 
 func TestTaskService_GetTasks(t *testing.T) {
-	type fields struct {
-		q *query.Query
+	expectedTasks := []*model.Task{
+		{
+			ID:        1,
+			Name:      "Task 1",
+			Status:    1,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		{
+			ID:        2,
+			Name:      "Task 2",
+			Status:    0,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 	}
-	type args struct {
-		ctx      context.Context
-		page     int
-		pageSize int
+
+	rows := sqlmock.NewRows([]string{"id", "name", "status", "created_at", "updated_at", "deleted_at"})
+	for _, task := range expectedTasks {
+		rows.AddRow(task.ID, task.Name, task.Status, task.CreatedAt, task.UpdatedAt, nil)
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []*model.Task
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+
+	mock.ExpectQuery(`^SELECT count\(\*\) FROM "task" WHERE "task"."deleted_at" IS NULL$`).
+		WithArgs().
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."deleted_at" IS NULL ORDER BY "task"."id" DESC LIMIT \$1$`).
+		WithArgs(10).
+		WillReturnRows(rows)
+
+	s := &TaskService{
+		q: q,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &TaskService{
-				q: tt.fields.q,
-			}
-			got, err := s.GetTasks(tt.args.ctx, tt.args.page, tt.args.pageSize)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetTasks() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTasks() got = %v, want %v", got, tt.want)
-			}
-		})
+
+	tasks, total, err := s.GetTasks(context.Background(), 1, 10, "id", "desc", "", nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, len(expectedTasks), len(tasks))
+	assert.Equal(t, total, int64(2))
+	for i, task := range tasks {
+		assert.Equal(t, expectedTasks[i].Name, task.Name)
+		assert.Equal(t, expectedTasks[i].Status, task.Status)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("GetTasks(): %s", err)
 	}
 }
 
