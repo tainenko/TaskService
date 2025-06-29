@@ -29,8 +29,8 @@ WORKDIR /
 COPY --from=builder /go/main /go/main
 COPY conf /go/conf
 
-ENV PORT 8080
-ENV GIN_MODE release
+ENV PORT=8080
+ENV GIN_MODE=release
 EXPOSE 8080
 
 WORKDIR /go

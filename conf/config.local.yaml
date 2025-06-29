@@ -12,6 +12,6 @@ App:
 Database:
   DBType: postgres
   Username: postgres
-  Password: admin
-  Host: 127.0.0.1:5432
+  Password: password
+  Host: postgres
   DBName: postgres

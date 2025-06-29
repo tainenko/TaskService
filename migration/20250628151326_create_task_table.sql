@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
 CREATE TABLE IF NOT EXISTS task
 (
     id SERIAL PRIMARY KEY,
