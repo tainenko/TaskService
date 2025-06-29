@@ -2,15 +2,15 @@ package service
 
 import (
 	"context"
-	"github/TaskService/dao/query"
+	"github/TaskService/dao"
 	"github/TaskService/model"
 )
 
 type TaskService struct {
-	q *query.Query
+	q *dao.Query
 }
 
-func NewTaskService(q *query.Query) *TaskService {
+func NewTaskService(q *dao.Query) *TaskService {
 	return &TaskService{q: q}
 }
 
