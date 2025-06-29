@@ -1,0 +1,17 @@
+mode: local
+
+Server:
+  RunMode: debug
+  HttpPort: 8080
+
+App:
+  LogSavePath: storage/logs
+  LogFileName: app
+  LogFileExt: .log
+
+Database:
+  DBType: postgres
+  Username: postgres
+  Password: postgres
+  Host: 127.0.0.1:5432
+  DBName: postgres
