@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"github/TaskService/dao/model"
 	"github/TaskService/dao/query"
+	"github/TaskService/model"
 )
 
 type TaskService struct {

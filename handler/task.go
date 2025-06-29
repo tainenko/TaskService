@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github/TaskService/dao/model"
+	"github/TaskService/model"
 	"github/TaskService/service"
 	"net/http"
 	"strconv"
