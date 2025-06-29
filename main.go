@@ -1,9 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	"github/TaskService/conf"
 	"github/TaskService/dao"
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
@@ -12,9 +13,18 @@ import (
 )
 
 func main() {
-	readConfig()
+	env := flag.String("env", "local", "Environment: local|dev|prod")
+	flag.Parse()
 
-	setupDB()
+	config, err := conf.LoadConfig(*env)
+	if err != nil {
+		panic(err)
+	}
+
+	err = setupDB(config.Database)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create default gin router
 	r := gin.Default()
@@ -31,28 +41,12 @@ func main() {
 	r.Run(":8080")
 }
 
-func setupDB() {
-	username := viper.GetString("Database.Username")
-	password := viper.GetString("Database.Password")
-	host := viper.GetString("Database.Host")
-	dbName := viper.GetString("Database.DBName")
-	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, host, dbName)
-
+func setupDB(config conf.Database) error {
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", config.Username, config.Password, config.Host, config.DBName)
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
-		panic(fmt.Sprintf("Failed to connect to database: %v", err))
+		return fmt.Errorf("failed to connect to database: %v", err)
 	}
 	dao.SetDefault(db)
-}
-
-func readConfig() {
-	vp := viper.New()
-	vp.SetConfigName("config")
-	vp.AddConfigPath("conf/")
-	vp.SetConfigType("yaml")
-	err := vp.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
-	fmt.Printf("Using config:%+v\n", vp.AllSettings())
+	return nil
 }
