@@ -1,0 +1,28 @@
+openapi: 3.0.0
+info:
+  contact:
+    name: "Tony Ko"
+    url: "https://github.com/tainenko/TaskService"
+  title: "Task Service"
+  description: OpenAPI.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080
+    description: local
+paths:
+  "/hello":
+    get:
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      tags:
+        - Hello
