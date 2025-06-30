@@ -1,18 +1,25 @@
 package handler
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github/TaskService/model"
-	"github/TaskService/service"
 	"net/http"
 	"strconv"
 )
 
-type TaskHandler struct {
-	taskService *service.TaskService
+type TaskServiceInterface interface {
+	GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]model.Task, int64, error)
+	CreateTask(ctx context.Context, task *model.Task) error
+	UpdateTask(ctx context.Context, task *model.Task) error
+	DeleteTask(ctx context.Context, id int32) error
 }
 
-func NewTaskHandler(taskService *service.TaskService) *TaskHandler {
+type TaskHandler struct {
+	taskService TaskServiceInterface
+}
+
+func NewTaskHandler(taskService TaskServiceInterface) *TaskHandler {
 	return &TaskHandler{taskService: taskService}
 }
 
