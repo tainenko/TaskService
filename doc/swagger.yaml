@@ -89,6 +89,13 @@ paths:
       responses:
         '201':
           description: Task created successfully
+          content:
+            application/json:
+              schema:
+                properties:
+                  id:
+                    type: integer
+
 
   /tasks/{id}:
     put:
@@ -110,8 +117,12 @@ paths:
       responses:
         '200':
           description: Task updated successfully
-        '404':
-          description: Task not found
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
 
     delete:
       summary: Delete task
@@ -126,8 +137,12 @@ paths:
       responses:
         '200':
           description: Task deleted successfully
-        '404':
-          description: Task not found
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
 
 components:
   schemas:

@@ -103,7 +103,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, task)
+	c.JSON(http.StatusCreated, task.ID)
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
@@ -130,7 +130,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, task)
+	c.JSON(http.StatusOK, gin.H{"message": "Task updated successfully"})
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
