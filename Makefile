@@ -45,3 +45,20 @@ deps:
 
 # Default target
 all: deps build
+
+# Show help
+help:
+	@echo "Available commands:"
+	@echo "  build          - Build the application"
+	@echo "  test           - Run tests"
+	@echo "  clean          - Clean build artifacts"
+	@echo "  docker-build   - Build Docker containers"
+	@echo "  docker-up      - Start Docker containers"
+	@echo "  docker-down    - Stop Docker containers"
+	@echo "  db-setup       - Set up PostgreSQL database"
+	@echo "  migrate-create - Create a new migration file"
+	@echo "  migrate-up     - Run database migrations"
+	@echo "  migrate-down   - Rollback database migrations"
+	@echo "  migrate-status - Show migration status"
+	@echo "  deps           - Install dependencies"
+	@echo "  all            - Install dependencies and build"
