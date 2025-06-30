@@ -6,7 +6,6 @@ package dao
 
 import (
 	"context"
-	"github/TaskService/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -16,6 +15,8 @@ import (
 	"gorm.io/gen/field"
 
 	"gorm.io/plugin/dbresolver"
+
+	"github/TaskService/model"
 )
 
 func newTask(db *gorm.DB, opts ...gen.DOOption) task {

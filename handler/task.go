@@ -9,7 +9,7 @@ import (
 )
 
 type TaskServiceInterface interface {
-	GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]model.Task, int64, error)
+	GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error)
 	CreateTask(ctx context.Context, task *model.Task) error
 	UpdateTask(ctx context.Context, task *model.Task) error
 	DeleteTask(ctx context.Context, id int32) error
