@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"github.com/creasty/defaults"
 	"github.com/gin-gonic/gin"
 	"github/TaskService/model"
 	"net/http"
@@ -46,12 +47,13 @@ type TaskListRequest struct {
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {
-	req := TaskListRequest{
-		Page:     1,
-		PageSize: 10,
-		Sort:     "id",
-		Order:    "desc",
+	req := TaskListRequest{}
+
+	if err := defaults.Set(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
