@@ -38,10 +38,10 @@ type PaginationResponse struct {
 }
 
 type TaskListRequest struct {
-	Page     int    `form:"page,default=1" binding:"gte=1"`
-	PageSize int    `form:"pageSize,default=10" binding:"gte=10,lte=100"`
-	Sort     string `form:"sort,default=id"`
-	Order    string `form:"order,default=desc"`
+	Page     int    `form:"page" default:"1" binding:"gte=1"`
+	PageSize int    `form:"pageSize" default:"10" binding:"gte=10,lte=100"`
+	Sort     string `form:"sort" default:"id"`
+	Order    string `form:"order" default:"desc"`
 	Name     string `form:"name"`
 	Status   *int32 `form:"status"`
 }
@@ -49,7 +49,7 @@ type TaskListRequest struct {
 func (h *TaskHandler) GetTasks(c *gin.Context) {
 	req := TaskListRequest{}
 
-	if err := defaults.Set(req); err != nil {
+	if err := defaults.Set(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
