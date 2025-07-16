@@ -7,3 +7,4 @@ CREATE TABLE IF NOT EXISTS task(
     deleted_at TIMESTAMP WITH TIME ZONE);
 
 CREATE INDEX IF NOT EXISTS idx_task_name_status ON task (name, status);
+CREATE INDEX IF NOT EXISTS idx_task_status ON task (status);
