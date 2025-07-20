@@ -5,6 +5,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/gin-gonic/gin"
 	"github/TaskService/model"
+	"github/TaskService/response"
 	"net/http"
 	"strconv"
 )
@@ -46,22 +47,28 @@ type TaskListRequest struct {
 	Status   *int32 `form:"status"`
 }
 
+type TaskListResponse struct {
+	Page  PaginationResponse `json:"page"`
+	Tasks []*model.Task      `json:"tasks"`
+}
+
 func (h *TaskHandler) GetTasks(c *gin.Context) {
 	req := TaskListRequest{}
 
 	if err := defaults.Set(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, err.Error())
 		return
 	}
 
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, err.Error())
 		return
 	}
 
 	tasks, total, err := h.taskService.GetTasks(c.Request.Context(), req.Page, req.PageSize, req.Sort, req.Order, req.Name, req.Status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusInternalServerError, response.GetTasksErr, err.Error())
 		return
 	}
 
@@ -86,10 +93,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		PrevPage:     prevPage,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data":       tasks,
-		"pagination": pagination,
-	})
+	response.Success(c, TaskListResponse{Tasks: tasks, Page: pagination})
 }
 
 func (h *TaskHandler) CreateTask(c *gin.Context) {
