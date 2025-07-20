@@ -150,14 +150,14 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task id"})
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
 		return
 	}
 
 	if err := h.taskService.DeleteTask(c.Request.Context(), int32(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusInternalServerError, response.DeleteTaskErr, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+	response.Success(c, "Task deleted successfully")
 }
