@@ -1,4 +1,4 @@
-package error
+package response
 
 type ErrCode int
 
@@ -6,9 +6,9 @@ type ErrCode int
 
 const (
 	// Server related errors start from 10001
-	ServerError ErrCode = iota + 10001
-	InvalidParam
-	InvalidPayload
+	ServerError    ErrCode = iota + 10001 // Server Error
+	InvalidParam                          // Invalid Param
+	InvalidPayload                        // Invalid Payload
 )
 
 const (
@@ -21,17 +21,19 @@ const (
 )
 
 type APIError struct {
-	Code ErrCode `json:"code"`
-	Msg  string  `json:"msg"`
+	Code   ErrCode `json:"code"`
+	Msg    string  `json:"msg"`
+	Status int     `json:"status"`
 }
 
 func (e *APIError) Error() string {
 	return e.Msg
 }
 
-func Wrap(err error, code ErrCode) APIError {
+func Wrap(status int, err error, code ErrCode) APIError {
 	return APIError{
-		Code: code,
-		Msg:  err.Error(),
+		Code:   code,
+		Msg:    err.Error(),
+		Status: status,
 	}
 }
