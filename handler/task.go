@@ -95,11 +95,15 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 	response.Success(c, TaskListResponse{Tasks: tasks, Page: pagination})
 }
 
+type TaskResponse struct {
+	ID int32 `json:"id"`
+}
+
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var req TaskRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusBadRequest, response.InvalidPayload, err.Error())
 		return
 	}
 
@@ -109,11 +113,11 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	if err := h.taskService.CreateTask(c.Request.Context(), task); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusInternalServerError, response.CreateTaskErr, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": task.ID})
+	response.Success(c, TaskResponse{ID: task.ID})
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
