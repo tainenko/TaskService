@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github/TaskService/conf"
 	"github/TaskService/dao"
+	"github/TaskService/middleware"
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,6 +29,8 @@ func main() {
 
 	// Create default gin router
 	r := gin.Default()
+
+	r.Use(middleware.CustomRecovery())
 
 	// Define a basic route
 	r.GET("/", func(c *gin.Context) {
