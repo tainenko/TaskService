@@ -19,31 +19,3 @@ const (
 	DeleteTaskErr                        // Delete Task Error
 	GetTaskErr                           // Get Task Error
 )
-
-type APIError struct {
-	Code   ErrCode     `json:"code"`
-	Msg    string      `json:"msg"`
-	Status int         `json:"-"`
-	Data   interface{} `json:"data"`
-}
-
-func (e *APIError) Error() string {
-	return e.Msg
-}
-
-func Wrap(status int, err error, code ErrCode) APIError {
-	return APIError{
-		Code:   code,
-		Msg:    err.Error(),
-		Status: status,
-	}
-}
-
-func NewWithData(data interface{}) APIError {
-	return APIError{
-		Code:   0,
-		Msg:    "",
-		Status: 200,
-		Data:   data,
-	}
-}

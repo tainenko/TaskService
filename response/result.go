@@ -1,20 +1,51 @@
-// Package response provides HTTP middleware components for the task service.
 package response
 
 import "github.com/gin-gonic/gin"
 
 type Result struct {
-	ctx *gin.Context
+	Code    ErrCode     `json:"code"`
+	Message string      `json:"msg"`
+	Status  int         `json:"-"`
+	Data    interface{} `json:"data"`
 }
 
-func NewResult(ctx *gin.Context) *Result {
-	return &Result{ctx: ctx}
+func (r *Result) Error() string {
+	return r.Message
 }
 
-func (r *Result) Success(data interface{}) {
-	if data == nil {
-		data = gin.H{}
+func New(code ErrCode, message string, data interface{}) *Result {
+	return &Result{
+		Code:    code,
+		Message: message,
+		Status:  200,
+		Data:    data,
 	}
-	res := NewWithData(data)
-	r.ctx.JSON(200, res)
+}
+func (r *Result) WithError(status int, code ErrCode, message string) *Result {
+	r.Status = status
+	r.Code = code
+	r.Message = message
+	return r
+}
+
+func (r *Result) WithData(data interface{}) *Result {
+	r.Data = data
+	return r
+}
+
+func Fail(c *gin.Context, status int, code ErrCode, message string) {
+	c.JSON(status, Result{
+		Code:    code,
+		Message: message,
+		Data:    nil,
+	})
+	c.Abort()
+}
+
+func Success(c *gin.Context, data interface{}) {
+	c.JSON(200, Result{
+		Code:    0,
+		Message: "",
+		Data:    data,
+	})
 }
