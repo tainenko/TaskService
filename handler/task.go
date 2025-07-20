@@ -123,13 +123,13 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task id"})
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
 		return
 	}
 
 	var req TaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusBadRequest, response.InvalidPayload, err.Error())
 		return
 	}
 
@@ -140,11 +140,11 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	if err := h.taskService.UpdateTask(c.Request.Context(), task); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Fail(c, http.StatusInternalServerError, response.UpdateTaskErr, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task updated successfully"})
+	response.Success(c, "Task updated successfully")
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
