@@ -61,7 +61,6 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		response.Fail(c, http.StatusBadRequest, response.InvalidParam, err.Error())
 		return
 	}
