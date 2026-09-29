@@ -1,39 +1,31 @@
 ############################
 # STEP 1 build executable binary
 ############################
-FROM golang:alpine AS builder
-# Install git.
-# Git is required for fetching the dependencies.
-RUN apk update && apk add --no-cache 'git=~2'
+FROM golang:1.24-alpine AS builder
 
-# Install dependencies
-ENV GO111MODULE=on
-WORKDIR $GOPATH/src/packages/goginapp/
+WORKDIR /src
+
+# Download dependencies first so this layer is cached until go.mod/go.sum change.
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
-
-# Fetch dependencies.
-# Using go get.
-RUN go get -d -v
-
-# Build the binary.
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/main .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/main .
 
 ############################
 # STEP 2 build a small image
 ############################
 FROM alpine:3
 
-WORKDIR /
+# Run as an unprivileged user.
+RUN adduser -D -u 10001 app
 
-# Copy our static executable.
-COPY --from=builder /go/main /go/main
-COPY conf /go/conf
+WORKDIR /app
+COPY --from=builder /out/main /app/main
+COPY conf /app/conf
 
-ENV PORT=8080
 ENV GIN_MODE=release
 EXPOSE 8080
+USER app
 
-WORKDIR /go
-
-# Run the Go Gin binary.
-ENTRYPOINT ["/go/main"]
+ENTRYPOINT ["/app/main"]
