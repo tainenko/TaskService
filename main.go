@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github/TaskService/auth"
 	"github/TaskService/conf"
 	"github/TaskService/dao"
 	"github/TaskService/handler"
@@ -44,11 +45,16 @@ func run(env string) error {
 	}
 	slog.Info("config loaded", "env", env, "mode", config.Server.RunMode, "port", config.Server.HttpPort)
 
-	sqlDB, err := setupDB(config.Database)
+	db, sqlDB, err := setupDB(config.Database)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sqlDB.Close() }()
+
+	tokens, err := auth.NewTokenManager(config.Auth.JWTSecret, time.Duration(config.Auth.TokenTTLMinutes)*time.Minute)
+	if err != nil {
+		return fmt.Errorf("auth config: %w (set TASK_AUTH_JWTSECRET)", err)
+	}
 
 	if config.Server.RunMode != "" {
 		gin.SetMode(config.Server.RunMode)
@@ -66,7 +72,8 @@ func run(env string) error {
 	health := handler.NewHealthHandler(sqlDB)
 	r.GET("/healthz", health.Healthz)
 	r.GET("/readyz", health.Readyz)
-	router.SetTaskRoute(r)
+	router.SetAuthRoute(r, db, tokens)
+	router.SetTaskRoute(r, tokens)
 
 	srv := &http.Server{
 		Addr:              ":" + strconv.Itoa(config.Server.HttpPort),
@@ -96,7 +103,7 @@ func run(env string) error {
 	return srv.Shutdown(shutdownCtx)
 }
 
-func setupDB(config conf.Database) (*sql.DB, error) {
+func setupDB(config conf.Database) (*gorm.DB, *sql.DB, error) {
 	// url.URL escapes special characters in the credentials.
 	dsn := (&url.URL{
 		Scheme:   "postgres",
@@ -108,19 +115,19 @@ func setupDB(config conf.Database) (*sql.DB, error) {
 
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
+		return nil, nil, fmt.Errorf("failed to get sql.DB: %w", err)
 	}
 	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
 	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(config.ConnMaxLifetime) * time.Second)
 
 	dao.SetDefault(db)
-	return sqlDB, nil
+	return db, sqlDB, nil
 }
 
 func envOr(key, fallback string) string {

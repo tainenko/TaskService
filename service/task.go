@@ -20,8 +20,8 @@ func NewTaskService(q *dao.Query) *TaskService {
 	return &TaskService{q: q}
 }
 
-func (s *TaskService) GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error) {
-	q := s.q.Task.WithContext(ctx)
+func (s *TaskService) GetTasks(ctx context.Context, userID int32, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error) {
+	q := s.q.Task.WithContext(ctx).Where(s.q.Task.UserID.Eq(userID))
 
 	if status != nil {
 		q = q.Where(s.q.Task.Status.Eq(*status))
@@ -56,15 +56,16 @@ func (s *TaskService) GetTasks(ctx context.Context, page, pageSize int, sort, or
 	return tasks, total, err
 }
 
-func (s *TaskService) CreateTask(ctx context.Context, task *model.Task) error {
+func (s *TaskService) CreateTask(ctx context.Context, userID int32, task *model.Task) error {
+	task.UserID = &userID
 	return s.q.Task.WithContext(ctx).Create(task)
 }
 
-func (s *TaskService) UpdateTask(ctx context.Context, task *model.Task) error {
+func (s *TaskService) UpdateTask(ctx context.Context, userID int32, task *model.Task) error {
 	// Select is required so that zero values (e.g. status 0) are written too.
 	info, err := s.q.Task.WithContext(ctx).
 		Select(s.q.Task.Name, s.q.Task.Status, s.q.Task.Description, s.q.Task.DueDate, s.q.Task.Priority).
-		Where(s.q.Task.ID.Eq(task.ID)).
+		Where(s.q.Task.ID.Eq(task.ID), s.q.Task.UserID.Eq(userID)).
 		Updates(task)
 	if err != nil {
 		return err
@@ -75,8 +76,8 @@ func (s *TaskService) UpdateTask(ctx context.Context, task *model.Task) error {
 	return nil
 }
 
-func (s *TaskService) DeleteTask(ctx context.Context, id int32) error {
-	info, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).Delete()
+func (s *TaskService) DeleteTask(ctx context.Context, userID, id int32) error {
+	info, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id), s.q.Task.UserID.Eq(userID)).Delete()
 	if err != nil {
 		return err
 	}
@@ -86,8 +87,8 @@ func (s *TaskService) DeleteTask(ctx context.Context, id int32) error {
 	return nil
 }
 
-func (s *TaskService) GetTaskByID(ctx context.Context, id int32) (*model.Task, error) {
-	task, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).First()
+func (s *TaskService) GetTaskByID(ctx context.Context, userID, id int32) (*model.Task, error) {
+	task, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id), s.q.Task.UserID.Eq(userID)).First()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTaskNotFound
 	}
@@ -95,9 +96,9 @@ func (s *TaskService) GetTaskByID(ctx context.Context, id int32) (*model.Task, e
 }
 
 // UpdateTaskStatus changes only the status of a task.
-func (s *TaskService) UpdateTaskStatus(ctx context.Context, id, status int32) error {
+func (s *TaskService) UpdateTaskStatus(ctx context.Context, userID, id, status int32) error {
 	info, err := s.q.Task.WithContext(ctx).
-		Where(s.q.Task.ID.Eq(id)).
+		Where(s.q.Task.ID.Eq(id), s.q.Task.UserID.Eq(userID)).
 		Update(s.q.Task.Status, status)
 	if err != nil {
 		return err

@@ -37,11 +37,26 @@ and can be run using Docker.
 
 Full documentation available at: https://tainenko.github.io/TaskService/
 
+### Authentication
+
+Task endpoints require a JWT: `Authorization: Bearer <token>`. Get one from `POST /auth/register`
+or `POST /auth/login` (JSON body `{"email": "...", "password": "..."}`, password 8-72 characters).
+Each user only sees and modifies their own tasks; other users' tasks return 404.
+
+Set the signing secret (at least 32 characters) via `TASK_AUTH_JWTSECRET`; the token lifetime is
+`Auth.TokenTTLMinutes` (default 60). `config.prod.yaml` has no secret, so the service refuses to start
+in prod until it is provided. The local/dev config ships with a development-only secret.
+
+Existing tasks created before authentication have no owner and are not visible through the API;
+assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
+
 ### Endpoints
 
 | Method | Endpoint    | Description          |
 |--------|-------------|----------------------|
-| GET    | /tasks      | List all tasks       |
+| POST   | /auth/register | Register, returns token |
+| POST   | /auth/login | Log in, returns token |
+| GET    | /tasks      | List your tasks      |
 | GET    | /tasks/{id} | Get a task           |
 | PATCH  | /tasks/{id}/status | Update task status |
 | POST   | /tasks      | Create a new task    |

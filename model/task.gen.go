@@ -20,6 +20,7 @@ type Task struct {
 	Description string         `gorm:"column:description;type:text;not null" json:"description"`
 	DueDate     *time.Time     `gorm:"column:due_date;type:timestamp with time zone" json:"due_date"`
 	Priority    int32          `gorm:"column:priority;type:integer;not null" json:"priority"`
+	UserID      *int32         `gorm:"column:user_id;type:integer" json:"-"`
 	CreatedAt   time.Time      `gorm:"column:created_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt   time.Time      `gorm:"column:updated_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:timestamp with time zone" json:"deleted_at"`

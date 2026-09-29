@@ -15,3 +15,7 @@ Database:
   Password: postgres
   Host: 127.0.0.1:5432
   DBName: postgres
+Auth:
+  # Override in real deployments with TASK_AUTH_JWTSECRET
+  JWTSecret: ""
+  TokenTTLMinutes: 60

@@ -9,7 +9,41 @@ info:
 servers:
   - url: http://localhost:8080
     description: local
+security:
+  - bearerAuth: []
 paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: User created; returns an access token
+        '400':
+          description: Invalid email or password (8-72 characters)
+        '409':
+          description: Email already registered
+  /auth/login:
+    post:
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: Returns an access token
+        '401':
+          description: Invalid email or password
   /tasks:
     get:
       summary: Get task list
@@ -193,7 +227,25 @@ paths:
           description: Task not found
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
+    Credentials:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
     Task:
       type: object
       properties:

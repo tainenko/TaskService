@@ -64,14 +64,14 @@ func TestMain(m *testing.M) {
 func TestTaskService_CreateTask(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO "task"`).
-		WithArgs("name", 1, "", nil, 0, nil).
+		WithArgs("name", 1, "", nil, 0, 5, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), time.Now()))
 	mock.ExpectCommit()
 
 	s := &TaskService{
 		q: q,
 	}
-	if err := s.CreateTask(context.Background(), &model.Task{Name: "name", Status: 1}); err != nil {
+	if err := s.CreateTask(context.Background(), 5, &model.Task{Name: "name", Status: 1}); err != nil {
 		t.Errorf("CreateTask() error = %v", err)
 	}
 }
@@ -79,14 +79,14 @@ func TestTaskService_CreateTask(t *testing.T) {
 func TestTaskService_DeleteTask(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE "task"`).
-		WithArgs(sqlmock.AnyArg(), 1).
+		WithArgs(sqlmock.AnyArg(), 1, 5).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	s := &TaskService{
 		q: q,
 	}
-	if err := s.DeleteTask(context.Background(), 1); err != nil {
+	if err := s.DeleteTask(context.Background(), 5, 1); err != nil {
 		t.Errorf("DeleteTask() error = %v", err)
 	}
 }
@@ -104,15 +104,15 @@ func TestTaskService_GetTaskByID(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "name", "status", "created_at", "updated_at", "deleted_at"}).
 		AddRow(expected.ID, expected.Name, expected.Status, expected.CreatedAt, expected.UpdatedAt, nil)
 
-	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."id" = \$1 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" LIMIT \$2$`).
-		WithArgs(1, 1).
+	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."id" = \$1 AND "task"."user_id" = \$2 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" LIMIT \$3$`).
+		WithArgs(1, 5, 1).
 		WillReturnRows(rows)
 
 	s := &TaskService{
 		q: q,
 	}
 
-	actual, err := s.GetTaskByID(context.Background(), taskID)
+	actual, err := s.GetTaskByID(context.Background(), 5, taskID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected.Name, actual.Name)
@@ -145,19 +145,19 @@ func TestTaskService_GetTasks(t *testing.T) {
 		rows.AddRow(task.ID, task.Name, task.Status, task.CreatedAt, task.UpdatedAt, nil)
 	}
 
-	mock.ExpectQuery(`^SELECT count\(\*\) FROM "task" WHERE "task"."deleted_at" IS NULL$`).
-		WithArgs().
+	mock.ExpectQuery(`^SELECT count\(\*\) FROM "task" WHERE "task"."user_id" = \$1 AND "task"."deleted_at" IS NULL$`).
+		WithArgs(5).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 
-	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."deleted_at" IS NULL ORDER BY "task"."id" DESC LIMIT \$1$`).
-		WithArgs(10).
+	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."user_id" = \$1 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" DESC LIMIT \$2$`).
+		WithArgs(5, 10).
 		WillReturnRows(rows)
 
 	s := &TaskService{
 		q: q,
 	}
 
-	tasks, total, err := s.GetTasks(context.Background(), 1, 10, "id", "desc", "", nil)
+	tasks, total, err := s.GetTasks(context.Background(), 5, 1, 10, "id", "desc", "", nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedTasks), len(tasks))
@@ -183,7 +183,7 @@ func TestTaskService_UpdateTask(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"description"=\$3,"due_date"=\$4,"priority"=\$5,"updated_at"=\$6 WHERE "task"."id" = \$7 AND "task"."deleted_at" IS NULL AND "id" = \$8$`).
+	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"description"=\$3,"due_date"=\$4,"priority"=\$5,"updated_at"=\$6 WHERE "task"."id" = \$7 AND "task"."user_id" = \$8 AND "task"."deleted_at" IS NULL AND "id" = \$9$`).
 		WithArgs(
 			updated.Name,
 			updated.Status,
@@ -192,6 +192,7 @@ func TestTaskService_UpdateTask(t *testing.T) {
 			updated.Priority,
 			sqlmock.AnyArg(),
 			updated.ID,
+			5,
 			updated.ID,
 		).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -201,7 +202,7 @@ func TestTaskService_UpdateTask(t *testing.T) {
 		q: q,
 	}
 
-	err := s.UpdateTask(context.Background(), updated)
+	err := s.UpdateTask(context.Background(), 5, updated)
 
 	assert.NoError(t, err)
 
@@ -216,19 +217,19 @@ func TestTaskService_UpdateTask_NotFound(t *testing.T) {
 	mock.ExpectCommit()
 
 	s := &TaskService{q: q}
-	err := s.UpdateTask(context.Background(), &model.Task{ID: 99, Name: "x"})
+	err := s.UpdateTask(context.Background(), 5, &model.Task{ID: 99, Name: "x"})
 	assert.ErrorIs(t, err, ErrTaskNotFound)
 }
 
 func TestTaskService_UpdateTaskStatus(t *testing.T) {
 	mock.ExpectBegin()
-	mock.ExpectExec(`^UPDATE "task" SET "status"=\$1,"updated_at"=\$2 WHERE "task"."id" = \$3 AND "task"."deleted_at" IS NULL$`).
-		WithArgs(0, sqlmock.AnyArg(), 1).
+	mock.ExpectExec(`^UPDATE "task" SET "status"=\$1,"updated_at"=\$2 WHERE "task"."id" = \$3 AND "task"."user_id" = \$4 AND "task"."deleted_at" IS NULL$`).
+		WithArgs(0, sqlmock.AnyArg(), 1, 5).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	s := &TaskService{q: q}
-	assert.NoError(t, s.UpdateTaskStatus(context.Background(), 1, 0))
+	assert.NoError(t, s.UpdateTaskStatus(context.Background(), 5, 1, 0))
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -236,7 +237,7 @@ func TestTaskService_GetTaskByID_NotFound(t *testing.T) {
 	mock.ExpectQuery(`^SELECT \* FROM "task"`).WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 	s := &TaskService{q: q}
-	_, err := s.GetTaskByID(context.Background(), 99)
+	_, err := s.GetTaskByID(context.Background(), 5, 99)
 	assert.ErrorIs(t, err, ErrTaskNotFound)
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/creasty/defaults"
 	"github.com/gin-gonic/gin"
+	"github/TaskService/middleware"
 	"github/TaskService/model"
 	"github/TaskService/response"
 	"github/TaskService/service"
@@ -14,12 +15,12 @@ import (
 )
 
 type TaskServiceInterface interface {
-	GetTaskByID(ctx context.Context, id int32) (*model.Task, error)
-	UpdateTaskStatus(ctx context.Context, id, status int32) error
-	GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error)
-	CreateTask(ctx context.Context, task *model.Task) error
-	UpdateTask(ctx context.Context, task *model.Task) error
-	DeleteTask(ctx context.Context, id int32) error
+	GetTaskByID(ctx context.Context, userID, id int32) (*model.Task, error)
+	UpdateTaskStatus(ctx context.Context, userID, id, status int32) error
+	GetTasks(ctx context.Context, userID int32, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error)
+	CreateTask(ctx context.Context, userID int32, task *model.Task) error
+	UpdateTask(ctx context.Context, userID int32, task *model.Task) error
+	DeleteTask(ctx context.Context, userID, id int32) error
 }
 
 type TaskHandler struct {
@@ -67,6 +68,12 @@ type TaskListResponse struct {
 }
 
 func (h *TaskHandler) GetTasks(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	req := TaskListRequest{}
 
 	if err := defaults.Set(&req); err != nil {
@@ -79,7 +86,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		return
 	}
 
-	tasks, total, err := h.taskService.GetTasks(c.Request.Context(), req.Page, req.PageSize, req.Sort, req.Order, req.Name, req.Status)
+	tasks, total, err := h.taskService.GetTasks(c.Request.Context(), userID, req.Page, req.PageSize, req.Sort, req.Order, req.Name, req.Status)
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, response.GetTasksErr, err.Error())
 		return
@@ -114,6 +121,12 @@ type TaskResponse struct {
 }
 
 func (h *TaskHandler) CreateTask(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	var req TaskRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -129,7 +142,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Priority:    req.Priority,
 	}
 
-	if err := h.taskService.CreateTask(c.Request.Context(), task); err != nil {
+	if err := h.taskService.CreateTask(c.Request.Context(), userID, task); err != nil {
 		response.Fail(c, http.StatusInternalServerError, response.CreateTaskErr, err.Error())
 		return
 	}
@@ -138,6 +151,12 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
 		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
@@ -159,7 +178,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		Priority:    req.Priority,
 	}
 
-	if err := h.taskService.UpdateTask(c.Request.Context(), task); err != nil {
+	if err := h.taskService.UpdateTask(c.Request.Context(), userID, task); err != nil {
 		if errors.Is(err, service.ErrTaskNotFound) {
 			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
 			return
@@ -172,13 +191,19 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
 		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
 		return
 	}
 
-	if err := h.taskService.DeleteTask(c.Request.Context(), int32(id)); err != nil {
+	if err := h.taskService.DeleteTask(c.Request.Context(), userID, int32(id)); err != nil {
 		if errors.Is(err, service.ErrTaskNotFound) {
 			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
 			return
@@ -191,13 +216,19 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) GetTask(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
 		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
 		return
 	}
 
-	task, err := h.taskService.GetTaskByID(c.Request.Context(), int32(id))
+	task, err := h.taskService.GetTaskByID(c.Request.Context(), userID, int32(id))
 	if err != nil {
 		if errors.Is(err, service.ErrTaskNotFound) {
 			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
@@ -211,6 +242,12 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) UpdateTaskStatus(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		response.Fail(c, http.StatusUnauthorized, response.Unauthorized, "unauthorized")
+		return
+	}
+
 	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
 	if err != nil || id <= 0 {
 		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
@@ -223,7 +260,7 @@ func (h *TaskHandler) UpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.taskService.UpdateTaskStatus(c.Request.Context(), int32(id), *req.Status); err != nil {
+	if err := h.taskService.UpdateTaskStatus(c.Request.Context(), userID, int32(id), *req.Status); err != nil {
 		if errors.Is(err, service.ErrTaskNotFound) {
 			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
 			return

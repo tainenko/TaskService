@@ -30,11 +30,17 @@ type App struct {
 	LogFileExt  string `mapstructure:"LogFileExt"`
 }
 
+type Auth struct {
+	JWTSecret       string `mapstructure:"JWTSecret"`
+	TokenTTLMinutes int    `mapstructure:"TokenTTLMinutes"`
+}
+
 type Config struct {
 	Mode     string   `mapstructure:"mode"`
 	Server   Server   `mapstructure:"Server"`
 	App      App      `mapstructure:"App"`
 	Database Database `mapstructure:"Database"`
+	Auth     Auth     `mapstructure:"Auth"`
 }
 
 // LoadConfig reads conf/config.<env>.yaml. Any value can be overridden by an
@@ -58,6 +64,8 @@ func LoadConfig(env string) (*Config, error) {
 	vp.SetDefault("Database.MaxOpenConns", 25)
 	vp.SetDefault("Database.MaxIdleConns", 5)
 	vp.SetDefault("Database.ConnMaxLifetimeSeconds", 300)
+	vp.SetDefault("Auth.JWTSecret", "")
+	vp.SetDefault("Auth.TokenTTLMinutes", 60)
 	vp.SetDefault("App.LogSavePath", "")
 	vp.SetDefault("App.LogFileName", "")
 	vp.SetDefault("App.LogFileExt", "")

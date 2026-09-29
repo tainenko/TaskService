@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/gin-gonic/gin"
+	"github/TaskService/middleware"
 	"github/TaskService/model"
 	"github/TaskService/service"
 	"net/http"
@@ -15,33 +16,33 @@ import (
 type MockTaskService struct {
 }
 
-func (m *MockTaskService) CreateTask(_ context.Context, task *model.Task) error {
+func (m *MockTaskService) CreateTask(_ context.Context, _ int32, task *model.Task) error {
 	return nil
 }
 
-func (m *MockTaskService) GetTasks(_ context.Context, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error) {
+func (m *MockTaskService) GetTasks(_ context.Context, _ int32, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error) {
 	return []*model.Task{}, int64(0), nil
 }
 
-func (m *MockTaskService) UpdateTask(_ context.Context, task *model.Task) error {
+func (m *MockTaskService) UpdateTask(_ context.Context, _ int32, task *model.Task) error {
 	return nil
 }
 
-func (m *MockTaskService) GetTaskByID(_ context.Context, id int32) (*model.Task, error) {
+func (m *MockTaskService) GetTaskByID(_ context.Context, _, id int32) (*model.Task, error) {
 	if id == 404 {
 		return nil, service.ErrTaskNotFound
 	}
 	return &model.Task{ID: id, Name: "t"}, nil
 }
 
-func (m *MockTaskService) UpdateTaskStatus(_ context.Context, id, status int32) error {
+func (m *MockTaskService) UpdateTaskStatus(_ context.Context, _, id, status int32) error {
 	if id == 404 {
 		return service.ErrTaskNotFound
 	}
 	return nil
 }
 
-func (m *MockTaskService) DeleteTask(_ context.Context, id int32) error {
+func (m *MockTaskService) DeleteTask(_ context.Context, _, id int32) error {
 	return nil
 }
 
@@ -81,6 +82,7 @@ func TestNewTaskHandler(t *testing.T) {
 func TestTaskHandler_CreateTask(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Set(middleware.UserIDKey, int32(1))
 
 	jsonStr := `{"name":"Test Task","status":1}`
 	c.Request, _ = http.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer([]byte(jsonStr)))
@@ -125,6 +127,7 @@ func TestTaskHandler_CreateTask(t *testing.T) {
 func TestTaskHandler_DeleteTask(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Set(middleware.UserIDKey, int32(1))
 
 	c.Request, _ = http.NewRequest(http.MethodDelete, "/tasks/1", nil)
 	c.Params = []gin.Param{{Key: "id", Value: "1"}}
@@ -168,6 +171,7 @@ func TestTaskHandler_DeleteTask(t *testing.T) {
 func TestTaskHandler_GetTasks(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Set(middleware.UserIDKey, int32(1))
 
 	c.Request, _ = http.NewRequest(http.MethodGet, "/tasks?page=1&page_size=10", nil)
 
@@ -210,6 +214,7 @@ func TestTaskHandler_GetTasks(t *testing.T) {
 func TestTaskHandler_UpdateTask(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Set(middleware.UserIDKey, int32(1))
 
 	jsonStr := `{"name":"Updated Task","status":1}`
 	c.Request, _ = http.NewRequest(http.MethodPut, "/tasks/1", bytes.NewBuffer([]byte(jsonStr)))
@@ -255,6 +260,7 @@ func TestTaskHandler_UpdateTask(t *testing.T) {
 func doRequest(t *testing.T, h gin.HandlerFunc, method, path, route, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set(middleware.UserIDKey, int32(1)) })
 	r.Handle(method, route, h)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
@@ -315,4 +321,6 @@ func TestTaskHandler_UpdateTask_NotFound(t *testing.T) {
 
 type notFoundService struct{ MockTaskService }
 
-func (notFoundService) UpdateTask(context.Context, *model.Task) error { return service.ErrTaskNotFound }
+func (notFoundService) UpdateTask(context.Context, int32, *model.Task) error {
+	return service.ErrTaskNotFound
+}

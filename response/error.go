@@ -9,6 +9,7 @@ const (
 	ServerError    ErrCode = iota + 10001 // Server Error
 	InvalidParam                          // Invalid Param
 	InvalidPayload                        // Invalid Payload
+	Unauthorized                          // Unauthorized
 )
 
 const (
@@ -19,4 +20,12 @@ const (
 	DeleteTaskErr                        // Delete Task Error
 	GetTaskErr                           // Get Task Error
 	TaskNotFound                         // Task Not Found
+)
+
+const (
+	// User related errors start from 30001
+	RegisterErr        ErrCode = iota + 30001 // Register Error
+	EmailTaken                                // Email Already Registered
+	LoginErr                                  // Login Error
+	InvalidCredentials                        // Invalid Email Or Password
 )

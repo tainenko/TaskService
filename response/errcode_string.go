@@ -11,32 +11,42 @@ func _() {
 	_ = x[ServerError-10001]
 	_ = x[InvalidParam-10002]
 	_ = x[InvalidPayload-10003]
+	_ = x[Unauthorized-10004]
 	_ = x[CreateTaskErr-20001]
 	_ = x[GetTasksErr-20002]
 	_ = x[UpdateTaskErr-20003]
 	_ = x[DeleteTaskErr-20004]
 	_ = x[GetTaskErr-20005]
 	_ = x[TaskNotFound-20006]
+	_ = x[RegisterErr-30001]
+	_ = x[EmailTaken-30002]
+	_ = x[LoginErr-30003]
+	_ = x[InvalidCredentials-30004]
 }
 
 const (
-	_ErrCode_name_0 = "Server ErrorInvalid ParamInvalid Payload"
+	_ErrCode_name_0 = "Server ErrorInvalid ParamInvalid PayloadUnauthorized"
 	_ErrCode_name_1 = "Insert Task ErrorGet Tasks ErrorUpdate Task ErrorDelete Task ErrorGet Task ErrorTask Not Found"
+	_ErrCode_name_2 = "Register ErrorEmail Already RegisteredLogin ErrorInvalid Email Or Password"
 )
 
 var (
-	_ErrCode_index_0 = [...]uint8{0, 12, 25, 40}
+	_ErrCode_index_0 = [...]uint8{0, 12, 25, 40, 52}
 	_ErrCode_index_1 = [...]uint8{0, 17, 32, 49, 66, 80, 94}
+	_ErrCode_index_2 = [...]uint8{0, 14, 38, 49, 74}
 )
 
 func (i ErrCode) String() string {
 	switch {
-	case 10001 <= i && i <= 10003:
+	case 10001 <= i && i <= 10004:
 		i -= 10001
 		return _ErrCode_name_0[_ErrCode_index_0[i]:_ErrCode_index_0[i+1]]
 	case 20001 <= i && i <= 20006:
 		i -= 20001
 		return _ErrCode_name_1[_ErrCode_index_1[i]:_ErrCode_index_1[i+1]]
+	case 30001 <= i && i <= 30004:
+		i -= 30001
+		return _ErrCode_name_2[_ErrCode_index_2[i]:_ErrCode_index_2[i+1]]
 	default:
 		return "ErrCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
