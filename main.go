@@ -48,7 +48,7 @@ func run(env string) error {
 	if err != nil {
 		return err
 	}
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	if config.Server.RunMode != "" {
 		gin.SetMode(config.Server.RunMode)

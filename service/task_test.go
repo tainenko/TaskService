@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
 		Conn: mockDB,
