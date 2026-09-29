@@ -21,6 +21,7 @@ import (
 	"github/TaskService/dao"
 	"github/TaskService/handler"
 	"github/TaskService/middleware"
+	"github/TaskService/ratelimit"
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -62,6 +63,9 @@ func run(env string) error {
 
 	// gin.New instead of gin.Default so the built-in Recovery does not shadow ours.
 	r := gin.New()
+	if err := r.SetTrustedProxies(config.Server.TrustedProxies); err != nil {
+		return fmt.Errorf("invalid trusted proxies: %w", err)
+	}
 	r.Use(gin.Logger(), middleware.CustomRecovery())
 
 	r.GET("/", func(c *gin.Context) {
@@ -72,7 +76,14 @@ func run(env string) error {
 	health := handler.NewHealthHandler(sqlDB)
 	r.GET("/healthz", health.Healthz)
 	r.GET("/readyz", health.Readyz)
-	router.SetAuthRoute(r, db, tokens)
+	ipLimiter := ratelimit.NewKeyedLimiter(
+		ratelimit.PerMinute(config.Auth.IPRatePerMinute), config.Auth.IPBurst, time.Hour)
+	// Refill so that LoginMaxFailures failures are forgiven over one window.
+	failureWindow := time.Duration(config.Auth.LoginFailureWindowMinutes) * time.Minute
+	loginFailures := ratelimit.NewKeyedLimiter(
+		ratelimit.PerMinute(float64(config.Auth.LoginMaxFailures)/failureWindow.Minutes()),
+		config.Auth.LoginMaxFailures, failureWindow)
+	router.SetAuthRoute(r, db, tokens, ipLimiter, loginFailures)
 	router.SetTaskRoute(r, tokens)
 
 	srv := &http.Server{

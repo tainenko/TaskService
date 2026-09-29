@@ -24,6 +24,7 @@ import (
 	"github/TaskService/dao"
 	"github/TaskService/handler"
 	"github/TaskService/middleware"
+	"github/TaskService/ratelimit"
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -31,9 +32,25 @@ import (
 )
 
 var (
-	server *httptest.Server
-	rawDB  *sql.DB
+	server     *httptest.Server
+	rawDB      *sql.DB
+	testDB     *gorm.DB
+	testTokens *auth.TokenManager
 )
+
+// newEngine wires the full API with the given auth rate limiters.
+func newEngine(ipLimiter, loginFailures *ratelimit.KeyedLimiter) *gin.Engine {
+	r := gin.New()
+	r.Use(middleware.CustomRecovery())
+	// Trust no proxy so X-Forwarded-For cannot be used to dodge rate limits.
+	_ = r.SetTrustedProxies(nil)
+	health := handler.NewHealthHandler(rawDB)
+	r.GET("/healthz", health.Healthz)
+	r.GET("/readyz", health.Readyz)
+	router.SetAuthRoute(r, testDB, testTokens, ipLimiter, loginFailures)
+	router.SetTaskRoute(r, testTokens)
+	return r
+}
 
 func TestMain(m *testing.M) {
 	os.Exit(run(m))
@@ -93,15 +110,12 @@ func run(m *testing.M) int {
 	}
 
 	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(middleware.CustomRecovery())
-	health := handler.NewHealthHandler(rawDB)
-	r.GET("/healthz", health.Healthz)
-	r.GET("/readyz", health.Readyz)
-	router.SetAuthRoute(r, gdb, tokens)
-	router.SetTaskRoute(r, tokens)
-
-	server = httptest.NewServer(r)
+	testDB, testTokens = gdb, tokens
+	server = httptest.NewServer(newEngine(
+		// Generous IP limit for the shared suite; rate-limit tests build their own server.
+		ratelimit.NewKeyedLimiter(ratelimit.PerMinute(6000), 1000, time.Hour),
+		ratelimit.NewKeyedLimiter(ratelimit.PerMinute(1), 5, time.Hour),
+	))
 	defer server.Close()
 
 	return m.Run()

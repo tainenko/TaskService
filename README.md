@@ -50,6 +50,21 @@ in prod until it is provided. The local/dev config ships with a development-only
 Existing tasks created before authentication have no owner and are not visible through the API;
 assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
 
+### Rate limiting
+
+`/auth/register` and `/auth/login` are protected against brute force, returning `429` with a
+`Retry-After` header:
+
+- **Per client IP**: `Auth.IPRatePerMinute` (default 20) with a burst of `Auth.IPBurst` (10).
+- **Per account** (login only): after `Auth.LoginMaxFailures` (5) failed logins within
+  `Auth.LoginFailureWindowMinutes` (15), that email is throttled from any IP, even with the
+  right password. A successful login resets the counter.
+
+Limits are kept in memory, so they apply per instance. Behind a reverse proxy or load balancer,
+set `Server.TrustedProxies` (env `TASK_SERVER_TRUSTEDPROXIES`, comma separated IPs/CIDRs);
+otherwise every client appears to come from the proxy's IP. It is empty by default, so a spoofed
+`X-Forwarded-For` header is ignored.
+
 ### Endpoints
 
 | Method | Endpoint    | Description          |

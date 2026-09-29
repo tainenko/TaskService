@@ -29,6 +29,8 @@ paths:
           description: Invalid email or password (8-72 characters)
         '409':
           description: Email already registered
+        '429':
+          description: Too many requests (see Retry-After header)
   /auth/login:
     post:
       summary: Log in
@@ -44,6 +46,8 @@ paths:
           description: Returns an access token
         '401':
           description: Invalid email or password
+        '429':
+          description: Too many requests or too many failed logins for this account (see Retry-After header)
   /tasks:
     get:
       summary: Get task list

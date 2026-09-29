@@ -6,10 +6,11 @@ type ErrCode int
 
 const (
 	// Server related errors start from 10001
-	ServerError    ErrCode = iota + 10001 // Server Error
-	InvalidParam                          // Invalid Param
-	InvalidPayload                        // Invalid Payload
-	Unauthorized                          // Unauthorized
+	ServerError     ErrCode = iota + 10001 // Server Error
+	InvalidParam                           // Invalid Param
+	InvalidPayload                         // Invalid Payload
+	Unauthorized                           // Unauthorized
+	TooManyRequests                        // Too Many Requests
 )
 
 const (

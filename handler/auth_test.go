@@ -53,7 +53,7 @@ func TestAuthHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewAuthHandler(tt.users, tt.tokens)
+			h := NewAuthHandler(tt.users, tt.tokens, nil)
 			w := doRequest(t, tt.call(h), http.MethodPost, "/x", "/x", tt.body)
 			if w.Code != tt.want {
 				t.Errorf("status = %d, want %d (%s)", w.Code, tt.want, w.Body.String())
@@ -77,4 +77,59 @@ func httptestNoUser(h gin.HandlerFunc) int {
 	req, _ := http.NewRequest(http.MethodGet, "/tasks", nil)
 	r.ServeHTTP(w, req)
 	return w.Code
+}
+
+type stubLimiter struct {
+	allowed       bool
+	fails, resets int
+}
+
+func (s *stubLimiter) Allowed(string) (bool, time.Duration) { return s.allowed, 30 * time.Second }
+func (s *stubLimiter) Fail(string)                          { s.fails++ }
+func (s *stubLimiter) Reset(string)                         { s.resets++ }
+
+func TestAuthHandler_LoginFailureLimiter(t *testing.T) {
+	body := `{"email":"a@example.com","password":"password123"}`
+
+	t.Run("locked account is rejected before authenticating", func(t *testing.T) {
+		lim := &stubLimiter{allowed: false}
+		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, lim)
+		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
+		if w.Code != http.StatusTooManyRequests {
+			t.Fatalf("status = %d, want 429", w.Code)
+		}
+		if w.Header().Get("Retry-After") != "30" {
+			t.Errorf("Retry-After = %q, want 30", w.Header().Get("Retry-After"))
+		}
+		if lim.fails != 0 || lim.resets != 0 {
+			t.Errorf("limiter state must not change on a blocked attempt")
+		}
+	})
+
+	t.Run("bad password counts as a failure", func(t *testing.T) {
+		lim := &stubLimiter{allowed: true}
+		h := NewAuthHandler(fakeUsers{authErr: service.ErrInvalidCredentials}, fakeTokens{}, lim)
+		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
+		if w.Code != http.StatusUnauthorized || lim.fails != 1 || lim.resets != 0 {
+			t.Errorf("status=%d fails=%d resets=%d", w.Code, lim.fails, lim.resets)
+		}
+	})
+
+	t.Run("server error is not counted as a failure", func(t *testing.T) {
+		lim := &stubLimiter{allowed: true}
+		h := NewAuthHandler(fakeUsers{authErr: errors.New("boom")}, fakeTokens{}, lim)
+		doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
+		if lim.fails != 0 {
+			t.Errorf("fails = %d, want 0", lim.fails)
+		}
+	})
+
+	t.Run("success resets the counter", func(t *testing.T) {
+		lim := &stubLimiter{allowed: true}
+		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, lim)
+		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
+		if w.Code != http.StatusOK || lim.resets != 1 {
+			t.Errorf("status=%d resets=%d", w.Code, lim.resets)
+		}
+	})
 }

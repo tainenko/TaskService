@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github/TaskService/middleware"
 	"github/TaskService/model"
 	"github/TaskService/response"
 	"github/TaskService/service"
@@ -22,13 +24,22 @@ type TokenIssuer interface {
 	Generate(userID int32) (string, time.Time, error)
 }
 
-type AuthHandler struct {
-	users  UserServiceInterface
-	tokens TokenIssuer
+// FailureLimiter throttles repeated failed logins per account, independent of
+// the client IP, so a botnet cannot brute-force one account from many addresses.
+type FailureLimiter interface {
+	Allowed(key string) (bool, time.Duration)
+	Fail(key string)
+	Reset(key string)
 }
 
-func NewAuthHandler(users UserServiceInterface, tokens TokenIssuer) *AuthHandler {
-	return &AuthHandler{users: users, tokens: tokens}
+type AuthHandler struct {
+	users    UserServiceInterface
+	tokens   TokenIssuer
+	failures FailureLimiter // optional
+}
+
+func NewAuthHandler(users UserServiceInterface, tokens TokenIssuer, failures FailureLimiter) *AuthHandler {
+	return &AuthHandler{users: users, tokens: tokens, failures: failures}
 }
 
 // bcrypt only hashes the first 72 bytes, so longer passwords are rejected.
@@ -70,9 +81,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Checked before the password so a locked account gives no signal about the password.
+	key := strings.ToLower(strings.TrimSpace(req.Email))
+	if h.failures != nil {
+		if ok, wait := h.failures.Allowed(key); !ok {
+			middleware.TooManyRequests(c, wait)
+			return
+		}
+	}
+
 	user, err := h.users.Authenticate(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
+			if h.failures != nil {
+				h.failures.Fail(key)
+			}
 			response.Fail(c, http.StatusUnauthorized, response.InvalidCredentials, err.Error())
 			return
 		}
@@ -80,6 +103,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	if h.failures != nil {
+		h.failures.Reset(key)
+	}
 	h.respondWithToken(c, http.StatusOK, user, response.LoginErr)
 }
 

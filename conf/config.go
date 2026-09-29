@@ -22,6 +22,10 @@ type Database struct {
 type Server struct {
 	RunMode  string `mapstructure:"RunMode"`
 	HttpPort int    `mapstructure:"HttpPort"`
+	// TrustedProxies lists proxy IPs/CIDRs whose X-Forwarded-For header is trusted
+	// for the client IP. Empty (the default) trusts none, so clients cannot spoof
+	// their IP to dodge rate limits.
+	TrustedProxies []string `mapstructure:"TrustedProxies"`
 }
 
 type App struct {
@@ -33,6 +37,13 @@ type App struct {
 type Auth struct {
 	JWTSecret       string `mapstructure:"JWTSecret"`
 	TokenTTLMinutes int    `mapstructure:"TokenTTLMinutes"`
+
+	// Per-IP limit on /auth/register and /auth/login.
+	IPRatePerMinute float64 `mapstructure:"IPRatePerMinute"`
+	IPBurst         int     `mapstructure:"IPBurst"`
+	// Failed logins allowed per account within the window before it is throttled.
+	LoginMaxFailures          int `mapstructure:"LoginMaxFailures"`
+	LoginFailureWindowMinutes int `mapstructure:"LoginFailureWindowMinutes"`
 }
 
 type Config struct {
@@ -66,6 +77,11 @@ func LoadConfig(env string) (*Config, error) {
 	vp.SetDefault("Database.ConnMaxLifetimeSeconds", 300)
 	vp.SetDefault("Auth.JWTSecret", "")
 	vp.SetDefault("Auth.TokenTTLMinutes", 60)
+	vp.SetDefault("Auth.IPRatePerMinute", 20)
+	vp.SetDefault("Auth.IPBurst", 10)
+	vp.SetDefault("Auth.LoginMaxFailures", 5)
+	vp.SetDefault("Auth.LoginFailureWindowMinutes", 15)
+	vp.SetDefault("Server.TrustedProxies", []string{})
 	vp.SetDefault("App.LogSavePath", "")
 	vp.SetDefault("App.LogFileName", "")
 	vp.SetDefault("App.LogFileExt", "")
@@ -82,5 +98,18 @@ func LoadConfig(env string) (*Config, error) {
 	if err := vp.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+	if err := config.Auth.validateRateLimits(); err != nil {
+		return nil, err
+	}
 	return config, nil
+}
+
+func (a Auth) validateRateLimits() error {
+	if a.IPRatePerMinute <= 0 || a.IPBurst < 1 {
+		return fmt.Errorf("Auth.IPRatePerMinute and Auth.IPBurst must be positive")
+	}
+	if a.LoginMaxFailures < 1 || a.LoginFailureWindowMinutes < 1 {
+		return fmt.Errorf("Auth.LoginMaxFailures and Auth.LoginFailureWindowMinutes must be positive")
+	}
+	return nil
 }

@@ -6,14 +6,16 @@ import (
 	"github/TaskService/dao"
 	"github/TaskService/handler"
 	"github/TaskService/middleware"
+	"github/TaskService/ratelimit"
 	"github/TaskService/service"
 	"gorm.io/gorm"
 )
 
-// SetAuthRoute registers the public registration and login endpoints.
-func SetAuthRoute(r *gin.Engine, db *gorm.DB, tokens *auth.TokenManager) {
-	h := handler.NewAuthHandler(service.NewUserService(db), tokens)
-	g := r.Group("/auth")
+// SetAuthRoute registers the public registration and login endpoints, limited
+// per client IP by ipLimiter. failures throttles repeated failed logins per account.
+func SetAuthRoute(r *gin.Engine, db *gorm.DB, tokens *auth.TokenManager, ipLimiter, failures *ratelimit.KeyedLimiter) {
+	h := handler.NewAuthHandler(service.NewUserService(db), tokens, failures)
+	g := r.Group("/auth", middleware.RateLimitByIP(ipLimiter))
 	g.POST("/register", h.Register)
 	g.POST("/login", h.Login)
 }
