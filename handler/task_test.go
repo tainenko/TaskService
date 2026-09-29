@@ -42,6 +42,21 @@ func (m *MockTaskService) UpdateTaskStatus(_ context.Context, _, id, status int3
 	return nil
 }
 
+func (m *MockTaskService) CreateTasks(_ context.Context, _ int32, tasks []*model.Task) error {
+	for i, t := range tasks {
+		t.ID = int32(i + 1)
+	}
+	return nil
+}
+
+func (m *MockTaskService) DeleteTasks(_ context.Context, _ int32, ids []int32) ([]int32, error) {
+	return ids, nil
+}
+
+func (m *MockTaskService) UpdateTasksStatus(_ context.Context, _ int32, ids []int32, _ int32) ([]int32, error) {
+	return ids, nil
+}
+
 func (m *MockTaskService) DeleteTask(_ context.Context, _, id int32) error {
 	return nil
 }

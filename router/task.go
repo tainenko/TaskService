@@ -25,6 +25,10 @@ func SetTaskRoute(r *gin.Engine, tokens *auth.TokenManager) {
 	s := service.NewTaskService(dao.Q)
 	taskHandler := handler.NewTaskHandler(s)
 	task := r.Group("/", middleware.AuthRequired(tokens))
+	// Static batch routes take precedence over the /tasks/:id patterns.
+	task.POST("/tasks/batch", taskHandler.CreateTasks)
+	task.DELETE("/tasks/batch", taskHandler.DeleteTasks)
+	task.PATCH("/tasks/batch/status", taskHandler.UpdateTasksStatus)
 	task.GET("/tasks", taskHandler.GetTasks)
 	task.GET("/tasks/:id", taskHandler.GetTask)
 	task.POST("/tasks", taskHandler.CreateTask)

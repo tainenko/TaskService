@@ -17,6 +17,9 @@ import (
 type TaskServiceInterface interface {
 	GetTaskByID(ctx context.Context, userID, id int32) (*model.Task, error)
 	UpdateTaskStatus(ctx context.Context, userID, id, status int32) error
+	CreateTasks(ctx context.Context, userID int32, tasks []*model.Task) error
+	DeleteTasks(ctx context.Context, userID int32, ids []int32) ([]int32, error)
+	UpdateTasksStatus(ctx context.Context, userID int32, ids []int32, status int32) ([]int32, error)
 	GetTasks(ctx context.Context, userID int32, filter service.TaskFilter) ([]*model.Task, int64, error)
 	CreateTask(ctx context.Context, userID int32, task *model.Task) error
 	UpdateTask(ctx context.Context, userID int32, task *model.Task) error

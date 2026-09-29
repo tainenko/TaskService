@@ -50,6 +50,16 @@ in prod until it is provided. The local/dev config ships with a development-only
 Existing tasks created before authentication have no owner and are not visible through the API;
 assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
 
+### Batch operations
+
+Up to 100 items per request:
+
+- `POST /tasks/batch` `{"tasks": [{...}, ...]}` creates tasks atomically (all or none) and returns
+  `{"ids": [...]}` in input order.
+- `DELETE /tasks/batch` `{"ids": [...]}` and `PATCH /tasks/batch/status` `{"ids": [...], "status": 1}`
+  apply to the tasks you own and return `{"processed": [...], "not_found": [...]}`; unknown IDs
+  (or other users' tasks) are reported in `not_found` instead of failing the request.
+
 ### Tags
 
 Tasks can carry up to 10 tags of at most 50 characters. Tags belong to the user and are
@@ -88,6 +98,9 @@ otherwise every client appears to come from the proxy's IP. It is empty by defau
 | POST   | /auth/login | Log in, returns token |
 | GET    | /tasks      | List your tasks      |
 | GET    | /tasks/{id} | Get a task           |
+| POST   | /tasks/batch | Create tasks in bulk |
+| DELETE | /tasks/batch | Delete tasks in bulk |
+| PATCH  | /tasks/batch/status | Set status in bulk |
 | GET    | /tags       | List your tags       |
 | DELETE | /tags/{id}  | Delete a tag         |
 | PATCH  | /tasks/{id}/status | Update task status |

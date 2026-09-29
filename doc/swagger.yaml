@@ -207,6 +207,72 @@ paths:
                   message:
                     type: string
 
+  /tasks/batch:
+    post:
+      summary: Create up to 100 tasks atomically
+      description: All tasks are created or none is. Returns the new IDs in input order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ tasks ]
+              properties:
+                tasks:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Invalid payload (nothing was created)
+    delete:
+      summary: Delete up to 100 tasks
+      description: IDs that do not exist or belong to someone else are reported in not_found.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ ids ]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: "{processed: [ids], not_found: [ids]}"
+  /tasks/batch/status:
+    patch:
+      summary: Set the status of up to 100 tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ ids, status ]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: integer
+                status:
+                  type: integer
+                  enum: [ 0, 1, 2 ]
+      responses:
+        '200':
+          description: "{processed: [ids], not_found: [ids]}"
   /tags:
     get:
       summary: List your tags
