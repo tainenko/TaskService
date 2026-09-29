@@ -36,3 +36,15 @@ CREATE TABLE IF NOT EXISTS task_tag(
     tag_id INTEGER NOT NULL REFERENCES tag (id) ON DELETE CASCADE,
     PRIMARY KEY (task_id, tag_id));
 CREATE INDEX IF NOT EXISTS idx_task_tag_tag_id ON task_tag (tag_id);
+
+
+CREATE TABLE IF NOT EXISTS refresh_token(
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    family_id VARCHAR(32) NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_refresh_token_family_id ON refresh_token (family_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_token_user_id ON refresh_token (user_id);

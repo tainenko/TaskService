@@ -44,11 +44,27 @@ or `POST /auth/login` (JSON body `{"email": "...", "password": "..."}`, password
 Each user only sees and modifies their own tasks; other users' tasks return 404.
 
 Set the signing secret (at least 32 characters) via `TASK_AUTH_JWTSECRET`; the token lifetime is
-`Auth.TokenTTLMinutes` (default 60). `config.prod.yaml` has no secret, so the service refuses to start
+`Auth.TokenTTLMinutes` (default 15, see below). `config.prod.yaml` has no secret, so the service refuses to start
 in prod until it is provided. The local/dev config ships with a development-only secret.
 
 Existing tasks created before authentication have no owner and are not visible through the API;
 assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
+
+### Sessions: refresh tokens and logout
+
+Register and login return a short-lived **access token** (`token`, JWT, `Auth.TokenTTLMinutes`,
+default 15 minutes) and a long-lived **refresh token** (`refresh_token`, `Auth.RefreshTTLHours`,
+default 720 = 30 days).
+
+- `POST /auth/refresh` `{"refresh_token": "..."}` returns a new access token **and a new refresh
+  token**. Refresh tokens are single-use: keep the newest one.
+- If an already-used refresh token is presented again (a sign it was stolen), the whole session
+  chain is revoked and the user must log in again.
+- `POST /auth/logout` `{"refresh_token": "..."}` ends that session (idempotent). `POST
+  /auth/logout-all` (with an access token) ends all of the user's sessions.
+- Refresh tokens are random opaque values stored only as SHA-256 hashes.
+- Access tokens are stateless, so they stay valid until they expire (at most `TokenTTLMinutes`)
+  even after logout; that is why they are short-lived.
 
 ### Batch operations
 
@@ -96,6 +112,9 @@ otherwise every client appears to come from the proxy's IP. It is empty by defau
 |--------|-------------|----------------------|
 | POST   | /auth/register | Register, returns token |
 | POST   | /auth/login | Log in, returns token |
+| POST   | /auth/refresh | Rotate refresh token, new access token |
+| POST   | /auth/logout | End a session |
+| POST   | /auth/logout-all | End all sessions |
 | GET    | /tasks      | List your tasks      |
 | GET    | /tasks/{id} | Get a task           |
 | POST   | /tasks/batch | Create tasks in bulk |

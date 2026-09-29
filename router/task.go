@@ -13,11 +13,14 @@ import (
 
 // SetAuthRoute registers the public registration and login endpoints, limited
 // per client IP by ipLimiter. failures throttles repeated failed logins per account.
-func SetAuthRoute(r *gin.Engine, db *gorm.DB, tokens *auth.TokenManager, ipLimiter, failures *ratelimit.KeyedLimiter) {
-	h := handler.NewAuthHandler(service.NewUserService(db), tokens, failures)
+func SetAuthRoute(r *gin.Engine, db *gorm.DB, tokens *auth.TokenManager, sessions *service.RefreshService, ipLimiter, failures *ratelimit.KeyedLimiter) {
+	h := handler.NewAuthHandler(service.NewUserService(db), tokens, sessions, failures)
 	g := r.Group("/auth", middleware.RateLimitByIP(ipLimiter))
 	g.POST("/register", h.Register)
 	g.POST("/login", h.Login)
+	g.POST("/refresh", h.Refresh)
+	g.POST("/logout", h.Logout)
+	g.POST("/logout-all", middleware.AuthRequired(tokens), h.LogoutAll)
 }
 
 // SetTaskRoute registers the task endpoints, which require a valid access token.

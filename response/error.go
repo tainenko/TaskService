@@ -28,8 +28,11 @@ const (
 
 const (
 	// User related errors start from 30001
-	RegisterErr        ErrCode = iota + 30001 // Register Error
-	EmailTaken                                // Email Already Registered
-	LoginErr                                  // Login Error
-	InvalidCredentials                        // Invalid Email Or Password
+	RegisterErr         ErrCode = iota + 30001 // Register Error
+	EmailTaken                                 // Email Already Registered
+	LoginErr                                   // Login Error
+	InvalidCredentials                         // Invalid Email Or Password
+	InvalidRefreshToken                        // Invalid Refresh Token
+	RefreshErr                                 // Refresh Error
+	LogoutErr                                  // Logout Error
 )

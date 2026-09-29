@@ -39,6 +39,8 @@ type App struct {
 type Auth struct {
 	JWTSecret       string `mapstructure:"JWTSecret"`
 	TokenTTLMinutes int    `mapstructure:"TokenTTLMinutes"`
+	// RefreshTTLHours is the lifetime of a refresh token (sliding: each refresh issues a new one).
+	RefreshTTLHours int `mapstructure:"RefreshTTLHours"`
 
 	// Per-IP limit on /auth/register and /auth/login.
 	IPRatePerMinute float64 `mapstructure:"IPRatePerMinute"`
@@ -78,7 +80,8 @@ func LoadConfig(env string) (*Config, error) {
 	vp.SetDefault("Database.MaxIdleConns", 5)
 	vp.SetDefault("Database.ConnMaxLifetimeSeconds", 300)
 	vp.SetDefault("Auth.JWTSecret", "")
-	vp.SetDefault("Auth.TokenTTLMinutes", 60)
+	vp.SetDefault("Auth.TokenTTLMinutes", 15)
+	vp.SetDefault("Auth.RefreshTTLHours", 720)
 	vp.SetDefault("Auth.IPRatePerMinute", 20)
 	vp.SetDefault("Auth.IPBurst", 10)
 	vp.SetDefault("Auth.LoginMaxFailures", 5)
@@ -108,6 +111,9 @@ func LoadConfig(env string) (*Config, error) {
 }
 
 func (a Auth) validateRateLimits() error {
+	if a.RefreshTTLHours < 1 {
+		return fmt.Errorf("Auth.RefreshTTLHours must be positive")
+	}
 	if a.IPRatePerMinute <= 0 || a.IPBurst < 1 {
 		return fmt.Errorf("Auth.IPRatePerMinute and Auth.IPBurst must be positive")
 	}

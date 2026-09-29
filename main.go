@@ -24,6 +24,7 @@ import (
 	"github/TaskService/middleware"
 	"github/TaskService/ratelimit"
 	"github/TaskService/router"
+	"github/TaskService/service"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -86,7 +87,8 @@ func run(env string) error {
 	loginFailures := ratelimit.NewKeyedLimiter(
 		ratelimit.PerMinute(float64(config.Auth.LoginMaxFailures)/failureWindow.Minutes()),
 		config.Auth.LoginMaxFailures, failureWindow)
-	router.SetAuthRoute(r, db, tokens, ipLimiter, loginFailures)
+	sessions := service.NewRefreshService(db, time.Duration(config.Auth.RefreshTTLHours)*time.Hour)
+	router.SetAuthRoute(r, db, tokens, sessions, ipLimiter, loginFailures)
 	router.SetTaskRoute(r, tokens)
 
 	srv := &http.Server{

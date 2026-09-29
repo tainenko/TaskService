@@ -53,7 +53,7 @@ func TestAuthHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewAuthHandler(tt.users, tt.tokens, nil)
+			h := NewAuthHandler(tt.users, tt.tokens, fakeSessions{}, nil)
 			w := doRequest(t, tt.call(h), http.MethodPost, "/x", "/x", tt.body)
 			if w.Code != tt.want {
 				t.Errorf("status = %d, want %d (%s)", w.Code, tt.want, w.Body.String())
@@ -93,7 +93,7 @@ func TestAuthHandler_LoginFailureLimiter(t *testing.T) {
 
 	t.Run("locked account is rejected before authenticating", func(t *testing.T) {
 		lim := &stubLimiter{allowed: false}
-		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, lim)
+		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, fakeSessions{}, lim)
 		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
 		if w.Code != http.StatusTooManyRequests {
 			t.Fatalf("status = %d, want 429", w.Code)
@@ -108,7 +108,7 @@ func TestAuthHandler_LoginFailureLimiter(t *testing.T) {
 
 	t.Run("bad password counts as a failure", func(t *testing.T) {
 		lim := &stubLimiter{allowed: true}
-		h := NewAuthHandler(fakeUsers{authErr: service.ErrInvalidCredentials}, fakeTokens{}, lim)
+		h := NewAuthHandler(fakeUsers{authErr: service.ErrInvalidCredentials}, fakeTokens{}, fakeSessions{}, lim)
 		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
 		if w.Code != http.StatusUnauthorized || lim.fails != 1 || lim.resets != 0 {
 			t.Errorf("status=%d fails=%d resets=%d", w.Code, lim.fails, lim.resets)
@@ -117,7 +117,7 @@ func TestAuthHandler_LoginFailureLimiter(t *testing.T) {
 
 	t.Run("server error is not counted as a failure", func(t *testing.T) {
 		lim := &stubLimiter{allowed: true}
-		h := NewAuthHandler(fakeUsers{authErr: errors.New("boom")}, fakeTokens{}, lim)
+		h := NewAuthHandler(fakeUsers{authErr: errors.New("boom")}, fakeTokens{}, fakeSessions{}, lim)
 		doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
 		if lim.fails != 0 {
 			t.Errorf("fails = %d, want 0", lim.fails)
@@ -126,10 +126,64 @@ func TestAuthHandler_LoginFailureLimiter(t *testing.T) {
 
 	t.Run("success resets the counter", func(t *testing.T) {
 		lim := &stubLimiter{allowed: true}
-		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, lim)
+		h := NewAuthHandler(fakeUsers{}, fakeTokens{}, fakeSessions{}, lim)
 		w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", body)
 		if w.Code != http.StatusOK || lim.resets != 1 {
 			t.Errorf("status=%d resets=%d", w.Code, lim.resets)
 		}
 	})
+}
+
+type fakeSessions struct {
+	issueErr, rotateErr, revokeErr error
+}
+
+func (f fakeSessions) Issue(context.Context, int32) (string, time.Time, error) {
+	return "refresh", time.Now().Add(time.Hour), f.issueErr
+}
+
+func (f fakeSessions) Rotate(context.Context, string) (int32, string, time.Time, error) {
+	return 1, "rotated", time.Now().Add(time.Hour), f.rotateErr
+}
+
+func (f fakeSessions) Revoke(context.Context, string) error { return f.revokeErr }
+
+func (f fakeSessions) RevokeAll(context.Context, int32) error { return f.revokeErr }
+
+func TestAuthHandler_RefreshAndLogout(t *testing.T) {
+	body := `{"refresh_token":"abc"}`
+	tests := []struct {
+		name     string
+		sessions fakeSessions
+		call     func(*AuthHandler) gin.HandlerFunc
+		body     string
+		want     int
+	}{
+		{"refresh ok", fakeSessions{}, func(h *AuthHandler) gin.HandlerFunc { return h.Refresh }, body, http.StatusOK},
+		{"refresh missing token", fakeSessions{}, func(h *AuthHandler) gin.HandlerFunc { return h.Refresh }, `{}`, http.StatusBadRequest},
+		{"refresh invalid", fakeSessions{rotateErr: service.ErrInvalidRefreshToken}, func(h *AuthHandler) gin.HandlerFunc { return h.Refresh }, body, http.StatusUnauthorized},
+		{"refresh db error", fakeSessions{rotateErr: errors.New("boom")}, func(h *AuthHandler) gin.HandlerFunc { return h.Refresh }, body, http.StatusInternalServerError},
+		{"logout ok", fakeSessions{}, func(h *AuthHandler) gin.HandlerFunc { return h.Logout }, body, http.StatusOK},
+		{"logout missing token", fakeSessions{}, func(h *AuthHandler) gin.HandlerFunc { return h.Logout }, `{}`, http.StatusBadRequest},
+		{"logout db error", fakeSessions{revokeErr: errors.New("boom")}, func(h *AuthHandler) gin.HandlerFunc { return h.Logout }, body, http.StatusInternalServerError},
+		{"logout-all ok", fakeSessions{}, func(h *AuthHandler) gin.HandlerFunc { return h.LogoutAll }, ``, http.StatusOK},
+		{"logout-all db error", fakeSessions{revokeErr: errors.New("boom")}, func(h *AuthHandler) gin.HandlerFunc { return h.LogoutAll }, ``, http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewAuthHandler(fakeUsers{}, fakeTokens{}, tt.sessions, nil)
+			w := doRequest(t, tt.call(h), http.MethodPost, "/x", "/x", tt.body)
+			if w.Code != tt.want {
+				t.Errorf("status = %d, want %d (%s)", w.Code, tt.want, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestAuthHandler_LoginFailsWhenRefreshCannotBeIssued(t *testing.T) {
+	h := NewAuthHandler(fakeUsers{}, fakeTokens{}, fakeSessions{issueErr: errors.New("boom")}, nil)
+	w := doRequest(t, h.Login, http.MethodPost, "/x", "/x", `{"email":"a@example.com","password":"password123"}`)
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", w.Code)
+	}
 }

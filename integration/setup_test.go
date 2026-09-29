@@ -27,6 +27,7 @@ import (
 	"github/TaskService/middleware"
 	"github/TaskService/ratelimit"
 	"github/TaskService/router"
+	"github/TaskService/service"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -50,7 +51,7 @@ func newEngine(ipLimiter, loginFailures *ratelimit.KeyedLimiter) *gin.Engine {
 	health := handler.NewHealthHandler(rawDB)
 	r.GET("/healthz", health.Healthz)
 	r.GET("/readyz", health.Readyz)
-	router.SetAuthRoute(r, testDB, testTokens, ipLimiter, loginFailures)
+	router.SetAuthRoute(r, testDB, testTokens, service.NewRefreshService(testDB, 24*time.Hour), ipLimiter, loginFailures)
 	router.SetTaskRoute(r, testTokens)
 	return r
 }

@@ -60,8 +60,9 @@ func decode[T any](t *testing.T, env envelope) T {
 }
 
 type authData struct {
-	Token string `json:"token"`
-	User  struct {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	User         struct {
 		ID    int32  `json:"id"`
 		Email string `json:"email"`
 	} `json:"user"`

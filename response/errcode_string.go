@@ -26,18 +26,21 @@ func _() {
 	_ = x[EmailTaken-30002]
 	_ = x[LoginErr-30003]
 	_ = x[InvalidCredentials-30004]
+	_ = x[InvalidRefreshToken-30005]
+	_ = x[RefreshErr-30006]
+	_ = x[LogoutErr-30007]
 }
 
 const (
 	_ErrCode_name_0 = "Server ErrorInvalid ParamInvalid PayloadUnauthorizedToo Many Requests"
 	_ErrCode_name_1 = "Insert Task ErrorGet Tasks ErrorUpdate Task ErrorDelete Task ErrorGet Task ErrorTask Not FoundGet Tags ErrorDelete Tag ErrorTag Not Found"
-	_ErrCode_name_2 = "Register ErrorEmail Already RegisteredLogin ErrorInvalid Email Or Password"
+	_ErrCode_name_2 = "Register ErrorEmail Already RegisteredLogin ErrorInvalid Email Or PasswordInvalid Refresh TokenRefresh ErrorLogout Error"
 )
 
 var (
 	_ErrCode_index_0 = [...]uint8{0, 12, 25, 40, 52, 69}
 	_ErrCode_index_1 = [...]uint8{0, 17, 32, 49, 66, 80, 94, 108, 124, 137}
-	_ErrCode_index_2 = [...]uint8{0, 14, 38, 49, 74}
+	_ErrCode_index_2 = [...]uint8{0, 14, 38, 49, 74, 95, 108, 120}
 )
 
 func (i ErrCode) String() string {
@@ -48,7 +51,7 @@ func (i ErrCode) String() string {
 	case 20001 <= i && i <= 20009:
 		i -= 20001
 		return _ErrCode_name_1[_ErrCode_index_1[i]:_ErrCode_index_1[i+1]]
-	case 30001 <= i && i <= 30004:
+	case 30001 <= i && i <= 30007:
 		i -= 30001
 		return _ErrCode_name_2[_ErrCode_index_2[i]:_ErrCode_index_2[i+1]]
 	default:

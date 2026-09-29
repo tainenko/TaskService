@@ -18,4 +18,5 @@ Database:
 Auth:
   # Override in real deployments with TASK_AUTH_JWTSECRET
   JWTSecret: dev-only-secret-change-me-0123456789abcdef
-  TokenTTLMinutes: 60
+  TokenTTLMinutes: 15
+  RefreshTTLHours: 720

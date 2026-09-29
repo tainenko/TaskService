@@ -31,6 +31,48 @@ paths:
           description: Email already registered
         '429':
           description: Too many requests (see Retry-After header)
+  /auth/refresh:
+    post:
+      summary: Exchange a refresh token
+      description: >
+        Single-use: returns a new access token and a new refresh token. Presenting an
+        already-used token revokes the whole session chain.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New access and refresh tokens
+        '401':
+          description: Invalid, expired or reused refresh token
+        '429':
+          description: Too many requests (see Retry-After header)
+  /auth/logout:
+    post:
+      summary: End the session of a refresh token
+      description: Idempotent; unknown tokens are ignored.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Logged out
+  /auth/logout-all:
+    post:
+      summary: End all sessions of the current user
+      responses:
+        '200':
+          description: Logged out everywhere
+        '401':
+          description: Missing or invalid access token
   /auth/login:
     post:
       summary: Log in
@@ -331,6 +373,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
     Credentials:
       type: object
       required:
