@@ -20,6 +20,7 @@ import (
 	"github/TaskService/conf"
 	"github/TaskService/dao"
 	"github/TaskService/handler"
+	"github/TaskService/metrics"
 	"github/TaskService/middleware"
 	"github/TaskService/ratelimit"
 	"github/TaskService/router"
@@ -66,13 +67,15 @@ func run(env string) error {
 	if err := r.SetTrustedProxies(config.Server.TrustedProxies); err != nil {
 		return fmt.Errorf("invalid trusted proxies: %w", err)
 	}
-	r.Use(gin.Logger(), middleware.CustomRecovery())
+	m := metrics.New(sqlDB)
+	r.Use(gin.Logger(), middleware.CustomRecovery(), m.Middleware())
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Welcome to the API",
 		})
 	})
+	r.GET("/metrics", m.Handler(config.Server.MetricsToken))
 	health := handler.NewHealthHandler(sqlDB)
 	r.GET("/healthz", health.Healthz)
 	r.GET("/readyz", health.Readyz)

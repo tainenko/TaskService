@@ -4,6 +4,7 @@ package integration
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -225,4 +226,21 @@ func TestListFilterSortPaginate(t *testing.T) {
 		status, _ := c.do(http.MethodGet, "/tasks"+q, nil)
 		assert.Equal(t, http.StatusBadRequest, status, q)
 	}
+}
+
+func TestMetrics(t *testing.T) {
+	c := newUser(t)
+	c.createTask(map[string]any{"name": "m", "status": 0})
+
+	resp, err := http.Get(server.URL + "/metrics")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	raw, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	body := string(raw)
+
+	assert.Contains(t, body, `http_requests_total{method="POST",route="/tasks",status="201"}`)
+	assert.Contains(t, body, `http_requests_total{method="POST",route="/auth/register",status="201"}`)
+	assert.Contains(t, body, "go_sql_open_connections{db_name=\"taskservice\"}")
 }

@@ -23,6 +23,7 @@ import (
 	"github/TaskService/auth"
 	"github/TaskService/dao"
 	"github/TaskService/handler"
+	"github/TaskService/metrics"
 	"github/TaskService/middleware"
 	"github/TaskService/ratelimit"
 	"github/TaskService/router"
@@ -41,7 +42,9 @@ var (
 // newEngine wires the full API with the given auth rate limiters.
 func newEngine(ipLimiter, loginFailures *ratelimit.KeyedLimiter) *gin.Engine {
 	r := gin.New()
-	r.Use(middleware.CustomRecovery())
+	m := metrics.New(rawDB)
+	r.Use(middleware.CustomRecovery(), m.Middleware())
+	r.GET("/metrics", m.Handler(""))
 	// Trust no proxy so X-Forwarded-For cannot be used to dodge rate limits.
 	_ = r.SetTrustedProxies(nil)
 	health := handler.NewHealthHandler(rawDB)

@@ -26,6 +26,8 @@ type Server struct {
 	// for the client IP. Empty (the default) trusts none, so clients cannot spoof
 	// their IP to dodge rate limits.
 	TrustedProxies []string `mapstructure:"TrustedProxies"`
+	// MetricsToken, if set, is required as a Bearer token to read /metrics.
+	MetricsToken string `mapstructure:"MetricsToken"`
 }
 
 type App struct {
@@ -82,6 +84,7 @@ func LoadConfig(env string) (*Config, error) {
 	vp.SetDefault("Auth.LoginMaxFailures", 5)
 	vp.SetDefault("Auth.LoginFailureWindowMinutes", 15)
 	vp.SetDefault("Server.TrustedProxies", []string{})
+	vp.SetDefault("Server.MetricsToken", "")
 	vp.SetDefault("App.LogSavePath", "")
 	vp.SetDefault("App.LogFileName", "")
 	vp.SetDefault("App.LogFileExt", "")

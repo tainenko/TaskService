@@ -50,6 +50,14 @@ in prod until it is provided. The local/dev config ships with a development-only
 Existing tasks created before authentication have no owner and are not visible through the API;
 assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
 
+### Metrics
+
+`GET /metrics` serves Prometheus metrics: `http_requests_total`, `http_request_duration_seconds`
+(labelled by method, route template and status, so cardinality stays bounded),
+`http_requests_in_flight`, database pool stats (`go_sql_*`) and Go/process metrics.
+Set `Server.MetricsToken` (env `TASK_SERVER_METRICSTOKEN`) to require `Authorization: Bearer <token>`;
+when empty the endpoint is open, so restrict it at the network level or set a token in production.
+
 ### Rate limiting
 
 `/auth/register` and `/auth/login` are protected against brute force, returning `429` with a
