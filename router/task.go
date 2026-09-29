@@ -31,4 +31,8 @@ func SetTaskRoute(r *gin.Engine, tokens *auth.TokenManager) {
 	task.PUT("/tasks/:id", taskHandler.UpdateTask)
 	task.PATCH("/tasks/:id/status", taskHandler.UpdateTaskStatus)
 	task.DELETE("/tasks/:id", taskHandler.DeleteTask)
+
+	tagHandler := handler.NewTagHandler(s)
+	task.GET("/tags", tagHandler.ListTags)
+	task.DELETE("/tags/:id", tagHandler.DeleteTag)
 }

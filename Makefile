@@ -1,4 +1,4 @@
-.PHONY: build test test-integration clean docker-build docker-up docker-down db-setup migrate-create migrate-up migrate-down migrate-status
+.PHONY: build test test-integration check clean docker-build docker-up docker-down db-setup migrate-create migrate-up migrate-down migrate-status
 
 # Build the application
 build:
@@ -10,6 +10,14 @@ test:
 
 # Run integration tests against a real PostgreSQL container (requires Docker)
 test-integration:
+	go test -tags integration -count=1 ./integration/...
+
+# Everything CI runs: format, vet, unit tests, lint, integration tests (requires Docker)
+check:
+	@test -z "$$(gofmt -l $$(git ls-files '*.go'))" || (echo "gofmt needed:"; gofmt -l $$(git ls-files '*.go'); exit 1)
+	go vet -tags integration ./...
+	go test -race ./...
+	golangci-lint run --build-tags integration
 	go test -tags integration -count=1 ./integration/...
 
 # Clean build artifacts

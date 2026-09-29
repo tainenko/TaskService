@@ -17,7 +17,7 @@ import (
 type TaskServiceInterface interface {
 	GetTaskByID(ctx context.Context, userID, id int32) (*model.Task, error)
 	UpdateTaskStatus(ctx context.Context, userID, id, status int32) error
-	GetTasks(ctx context.Context, userID int32, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error)
+	GetTasks(ctx context.Context, userID int32, filter service.TaskFilter) ([]*model.Task, int64, error)
 	CreateTask(ctx context.Context, userID int32, task *model.Task) error
 	UpdateTask(ctx context.Context, userID int32, task *model.Task) error
 	DeleteTask(ctx context.Context, userID, id int32) error
@@ -39,6 +39,8 @@ type TaskRequest struct {
 	Description string     `json:"description"`
 	DueDate     *time.Time `json:"due_date"`
 	Priority    int32      `json:"priority" binding:"oneof=0 1 2"`
+	// Tags replaces the task's tags. Omit it to leave them unchanged; [] clears them.
+	Tags []string `json:"tags"`
 }
 
 type TaskStatusRequest struct {
@@ -60,6 +62,7 @@ type TaskListRequest struct {
 	Order    string `form:"order" default:"desc"`
 	Name     string `form:"name"`
 	Status   *int32 `form:"status" binding:"omitempty,oneof=0 1 2"`
+	Tag      string `form:"tag" binding:"max=50"`
 }
 
 type TaskListResponse struct {
@@ -86,7 +89,10 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		return
 	}
 
-	tasks, total, err := h.taskService.GetTasks(c.Request.Context(), userID, req.Page, req.PageSize, req.Sort, req.Order, req.Name, req.Status)
+	tasks, total, err := h.taskService.GetTasks(c.Request.Context(), userID, service.TaskFilter{
+		Page: req.Page, PageSize: req.PageSize, Sort: req.Sort, Order: req.Order,
+		Name: req.Name, Status: req.Status, Tag: req.Tag,
+	})
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, response.GetTasksErr, err.Error())
 		return
@@ -134,12 +140,19 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
+	tags, err := service.NormalizeTags(req.Tags)
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, response.InvalidPayload, err.Error())
+		return
+	}
+
 	task := &model.Task{
 		Name:        req.Name,
 		Status:      req.Status,
 		Description: req.Description,
 		DueDate:     req.DueDate,
 		Priority:    req.Priority,
+		Tags:        tags,
 	}
 
 	if err := h.taskService.CreateTask(c.Request.Context(), userID, task); err != nil {
@@ -169,6 +182,12 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
+	tags, err := service.NormalizeTags(req.Tags)
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, response.InvalidPayload, err.Error())
+		return
+	}
+
 	task := &model.Task{
 		ID:          int32(id),
 		Name:        req.Name,
@@ -176,6 +195,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		Description: req.Description,
 		DueDate:     req.DueDate,
 		Priority:    req.Priority,
+		Tags:        tags,
 	}
 
 	if err := h.taskService.UpdateTask(c.Request.Context(), userID, task); err != nil {

@@ -21,6 +21,9 @@ const (
 	DeleteTaskErr                        // Delete Task Error
 	GetTaskErr                           // Get Task Error
 	TaskNotFound                         // Task Not Found
+	GetTagsErr                           // Get Tags Error
+	DeleteTagErr                         // Delete Tag Error
+	TagNotFound                          // Tag Not Found
 )
 
 const (

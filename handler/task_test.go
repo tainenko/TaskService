@@ -20,7 +20,7 @@ func (m *MockTaskService) CreateTask(_ context.Context, _ int32, task *model.Tas
 	return nil
 }
 
-func (m *MockTaskService) GetTasks(_ context.Context, _ int32, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error) {
+func (m *MockTaskService) GetTasks(_ context.Context, _ int32, _ service.TaskFilter) ([]*model.Task, int64, error) {
 	return []*model.Task{}, int64(0), nil
 }
 

@@ -14,16 +14,18 @@ const TableNameTask = "task"
 
 // Task mapped from table <task>
 type Task struct {
-	ID          int32          `gorm:"column:id;type:integer;primaryKey;autoIncrement:true" json:"id"`
-	Name        string         `gorm:"column:name;type:character varying(255);not null" json:"name"`
-	Status      int32          `gorm:"column:status;type:integer;not null" json:"status"`
-	Description string         `gorm:"column:description;type:text;not null" json:"description"`
-	DueDate     *time.Time     `gorm:"column:due_date;type:timestamp with time zone" json:"due_date"`
-	Priority    int32          `gorm:"column:priority;type:integer;not null" json:"priority"`
-	UserID      *int32         `gorm:"column:user_id;type:integer" json:"-"`
-	CreatedAt   time.Time      `gorm:"column:created_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"column:updated_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:timestamp with time zone" json:"deleted_at"`
+	ID          int32      `gorm:"column:id;type:integer;primaryKey;autoIncrement:true" json:"id"`
+	Name        string     `gorm:"column:name;type:character varying(255);not null" json:"name"`
+	Status      int32      `gorm:"column:status;type:integer;not null" json:"status"`
+	Description string     `gorm:"column:description;type:text;not null" json:"description"`
+	DueDate     *time.Time `gorm:"column:due_date;type:timestamp with time zone" json:"due_date"`
+	Priority    int32      `gorm:"column:priority;type:integer;not null" json:"priority"`
+	UserID      *int32     `gorm:"column:user_id;type:integer" json:"-"`
+	// Tags is not a column: it is loaded from task_tag. nil on input means "leave unchanged".
+	Tags      []string       `gorm:"-" json:"tags"`
+	CreatedAt time.Time      `gorm:"column:created_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;type:timestamp with time zone" json:"deleted_at"`
 }
 
 // TableName Task's table name

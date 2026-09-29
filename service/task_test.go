@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github/TaskService/dao"
@@ -12,6 +13,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,6 +109,8 @@ func TestTaskService_GetTaskByID(t *testing.T) {
 	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."id" = \$1 AND "task"."user_id" = \$2 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" LIMIT \$3$`).
 		WithArgs(1, 5, 1).
 		WillReturnRows(rows)
+	mock.ExpectQuery(`^SELECT task_tag.task_id AS task_id, tag.name AS name FROM "task_tag"`).
+		WillReturnRows(sqlmock.NewRows([]string{"task_id", "name"}))
 
 	s := &TaskService{
 		q: q,
@@ -152,12 +156,15 @@ func TestTaskService_GetTasks(t *testing.T) {
 	mock.ExpectQuery(`^SELECT \* FROM "task" WHERE "task"."user_id" = \$1 AND "task"."deleted_at" IS NULL ORDER BY "task"."id" DESC LIMIT \$2$`).
 		WithArgs(5, 10).
 		WillReturnRows(rows)
+	mock.ExpectQuery(`^SELECT task_tag.task_id AS task_id, tag.name AS name FROM "task_tag" JOIN tag ON tag.id = task_tag.tag_id WHERE task_tag.task_id IN \(\$1,\$2\) ORDER BY tag.name$`).
+		WithArgs(1, 2).
+		WillReturnRows(sqlmock.NewRows([]string{"task_id", "name"}).AddRow(1, "work"))
 
 	s := &TaskService{
 		q: q,
 	}
 
-	tasks, total, err := s.GetTasks(context.Background(), 5, 1, 10, "id", "desc", "", nil)
+	tasks, total, err := s.GetTasks(context.Background(), 5, TaskFilter{Page: 1, PageSize: 10, Sort: "id", Order: "desc"})
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedTasks), len(tasks))
@@ -243,4 +250,33 @@ func TestTaskService_GetTaskByID_NotFound(t *testing.T) {
 
 func TestEscapeLike(t *testing.T) {
 	assert.Equal(t, `50\% \_done\\`, escapeLike(`50% _done\`))
+}
+
+func TestNormalizeTags(t *testing.T) {
+	got, err := NormalizeTags(nil)
+	assert.NoError(t, err)
+	assert.Nil(t, got, "nil means unchanged")
+
+	got, err = NormalizeTags([]string{})
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got, "empty means clear")
+
+	got, err = NormalizeTags([]string{" Work ", "WORK", "home", "work"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"work", "home"}, got)
+
+	_, err = NormalizeTags([]string{"ok", "  "})
+	assert.ErrorIs(t, err, ErrInvalidTag)
+	_, err = NormalizeTags([]string{strings.Repeat("x", MaxTagLength+1)})
+	assert.ErrorIs(t, err, ErrInvalidTag)
+	_, err = NormalizeTags([]string{strings.Repeat("é", MaxTagLength)})
+	assert.NoError(t, err, "length counts characters, not bytes")
+
+	many := make([]string, MaxTagsPerTask+1)
+	for i := range many {
+		many[i] = fmt.Sprintf("t%d", i)
+	}
+	_, err = NormalizeTags(many)
+	assert.ErrorIs(t, err, ErrInvalidTag)
 }

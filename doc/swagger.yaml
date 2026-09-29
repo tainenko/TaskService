@@ -85,6 +85,12 @@ paths:
             type: integer
             enum: [ 0, 1, 2 ]
           description: "Filter by task status (0 = todo, 1 = done, 2 = in progress)"
+        - in: query
+          name: tag
+          schema:
+            type: string
+            maxLength: 50
+          description: Only tasks with this tag (case-insensitive)
       responses:
         '200':
           description: Successful response
@@ -201,6 +207,28 @@ paths:
                   message:
                     type: string
 
+  /tags:
+    get:
+      summary: List your tags
+      description: Tags with the number of (non-deleted) tasks using each
+      responses:
+        '200':
+          description: OK
+  /tags/{id}:
+    delete:
+      summary: Delete a tag
+      description: Removes the tag and detaches it from all tasks
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+        '404':
+          description: Tag not found
   /tasks/{id}/status:
     patch:
       summary: Update task status
@@ -273,6 +301,13 @@ components:
           type: integer
           enum: [ 0, 1, 2 ]
           description: 0 = low, 1 = medium, 2 = high
+        tags:
+          type: array
+          description: Normalized to lowercase and de-duplicated
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50
         created_at:
           type: string
           format: date-time
@@ -303,3 +338,10 @@ components:
           type: integer
           enum: [ 0, 1, 2 ]
           description: 0 = low, 1 = medium, 2 = high
+        tags:
+          type: array
+          description: "Replaces the task's tags. Omit to leave unchanged; [] clears them"
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 50

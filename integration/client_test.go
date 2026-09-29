@@ -68,12 +68,13 @@ type authData struct {
 }
 
 type task struct {
-	ID          int32   `json:"id"`
-	Name        string  `json:"name"`
-	Status      int32   `json:"status"`
-	Description string  `json:"description"`
-	DueDate     *string `json:"due_date"`
-	Priority    int32   `json:"priority"`
+	ID          int32    `json:"id"`
+	Name        string   `json:"name"`
+	Status      int32    `json:"status"`
+	Description string   `json:"description"`
+	DueDate     *string  `json:"due_date"`
+	Priority    int32    `json:"priority"`
+	Tags        []string `json:"tags"`
 }
 
 type taskList struct {

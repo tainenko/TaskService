@@ -50,6 +50,13 @@ in prod until it is provided. The local/dev config ships with a development-only
 Existing tasks created before authentication have no owner and are not visible through the API;
 assign them with `UPDATE task SET user_id = <id> WHERE user_id IS NULL`.
 
+### Tags
+
+Tasks can carry up to 10 tags of at most 50 characters. Tags belong to the user and are
+normalized to lowercase and de-duplicated. Send `"tags": [...]` when creating or updating a task:
+omitting it on update leaves the tags unchanged, `[]` clears them. Filter with `GET /tasks?tag=work`;
+list your tags with usage counts via `GET /tags`; `DELETE /tags/{id}` removes a tag from all tasks.
+
 ### Metrics
 
 `GET /metrics` serves Prometheus metrics: `http_requests_total`, `http_request_duration_seconds`
@@ -81,6 +88,8 @@ otherwise every client appears to come from the proxy's IP. It is empty by defau
 | POST   | /auth/login | Log in, returns token |
 | GET    | /tasks      | List your tasks      |
 | GET    | /tasks/{id} | Get a task           |
+| GET    | /tags       | List your tags       |
+| DELETE | /tags/{id}  | Delete a tag         |
 | PATCH  | /tasks/{id}/status | Update task status |
 | POST   | /tasks      | Create a new task    |
 | PUT    | /tasks/{id} | Update existing task |
