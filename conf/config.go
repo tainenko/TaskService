@@ -3,6 +3,7 @@ package conf
 import (
 	"fmt"
 	"github.com/spf13/viper"
+	"strings"
 )
 
 type Database struct {
@@ -11,6 +12,11 @@ type Database struct {
 	Password string `mapstructure:"Password"`
 	Host     string `mapstructure:"Host"`
 	DBName   string `mapstructure:"DBName"`
+	SSLMode  string `mapstructure:"SSLMode"`
+
+	MaxOpenConns    int `mapstructure:"MaxOpenConns"`
+	MaxIdleConns    int `mapstructure:"MaxIdleConns"`
+	ConnMaxLifetime int `mapstructure:"ConnMaxLifetimeSeconds"`
 }
 
 type Server struct {
@@ -31,22 +37,42 @@ type Config struct {
 	Database Database `mapstructure:"Database"`
 }
 
+// LoadConfig reads conf/config.<env>.yaml. Any value can be overridden by an
+// environment variable named TASK_<SECTION>_<KEY>, e.g. TASK_DATABASE_PASSWORD.
 func LoadConfig(env string) (*Config, error) {
 	vp := viper.New()
 	vp.SetConfigName(fmt.Sprintf("config.%s", env))
 	vp.AddConfigPath("conf/")
 	vp.SetConfigType("yaml")
 
-	err := vp.ReadInConfig()
-	if err != nil {
-		return nil, fmt.Errorf("Fatal error config file: %s \n", err)
+	// Defaults double as the key registry so AutomaticEnv works with Unmarshal.
+	vp.SetDefault("mode", env)
+	vp.SetDefault("Server.RunMode", "debug")
+	vp.SetDefault("Server.HttpPort", 8080)
+	vp.SetDefault("Database.DBType", "postgres")
+	vp.SetDefault("Database.Username", "")
+	vp.SetDefault("Database.Password", "")
+	vp.SetDefault("Database.Host", "")
+	vp.SetDefault("Database.DBName", "")
+	vp.SetDefault("Database.SSLMode", "disable")
+	vp.SetDefault("Database.MaxOpenConns", 25)
+	vp.SetDefault("Database.MaxIdleConns", 5)
+	vp.SetDefault("Database.ConnMaxLifetimeSeconds", 300)
+	vp.SetDefault("App.LogSavePath", "")
+	vp.SetDefault("App.LogFileName", "")
+	vp.SetDefault("App.LogFileExt", "")
+
+	vp.SetEnvPrefix("TASK")
+	vp.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	vp.AutomaticEnv()
+
+	if err := vp.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
 	}
-	fmt.Printf("Using config:%+v\n", vp.AllSettings())
 
 	config := &Config{}
-	err = vp.Unmarshal(&config)
-	if err != nil {
-		panic(fmt.Errorf("Fatal error Unmarshal config file: %s \n", err))
+	if err := vp.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 	return config, nil
 }

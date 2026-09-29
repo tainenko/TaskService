@@ -1,8 +1,19 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github/TaskService/conf"
 	"github/TaskService/dao"
@@ -10,29 +21,41 @@ import (
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"net/http"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
-	env := flag.String("env", "local", "Environment: local|dev|prod")
+	env := flag.String("env", envOr("APP_ENV", "local"), "Environment: local|dev|prod")
 	flag.Parse()
 
-	config, err := conf.LoadConfig(*env)
+	if err := run(*env); err != nil {
+		slog.Error("service exited with error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(env string) error {
+	config, err := conf.LoadConfig(env)
 	if err != nil {
-		panic(err)
+		return err
+	}
+	slog.Info("config loaded", "env", env, "mode", config.Server.RunMode, "port", config.Server.HttpPort)
+
+	sqlDB, err := setupDB(config.Database)
+	if err != nil {
+		return err
+	}
+	defer sqlDB.Close()
+
+	if config.Server.RunMode != "" {
+		gin.SetMode(config.Server.RunMode)
 	}
 
-	err = setupDB(config.Database)
-	if err != nil {
-		panic(err)
-	}
+	// gin.New instead of gin.Default so the built-in Recovery does not shadow ours.
+	r := gin.New()
+	r.Use(gin.Logger(), middleware.CustomRecovery())
 
-	// Create default gin router
-	r := gin.Default()
-
-	r.Use(middleware.CustomRecovery())
-
-	// Define a basic route
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Welcome to the API",
@@ -40,16 +63,64 @@ func main() {
 	})
 	router.SetTaskRoute(r)
 
-	// Run the server on port 8080
-	r.Run(":8080")
+	srv := &http.Server{
+		Addr:              ":" + strconv.Itoa(config.Server.HttpPort),
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		slog.Info("shutting down", "timeout", shutdownTimeout)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
 }
 
-func setupDB(config conf.Database) error {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", config.Username, config.Password, config.Host, config.DBName)
+func setupDB(config conf.Database) (interface{ Close() error }, error) {
+	// url.URL escapes special characters in the credentials.
+	dsn := (&url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(config.Username, config.Password),
+		Host:     config.Host,
+		Path:     "/" + config.DBName,
+		RawQuery: url.Values{"sslmode": {config.SSLMode}}.Encode(),
+	}).String()
+
 	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %v", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(config.ConnMaxLifetime) * time.Second)
+
 	dao.SetDefault(db)
-	return nil
+	return sqlDB, nil
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
