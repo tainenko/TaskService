@@ -1,4 +1,4 @@
-.PHONY: build test clean docker-build docker-up docker-down db-setup migrate-create migrate-up migrate-down migrate-status
+.PHONY: build test test-integration clean docker-build docker-up docker-down db-setup migrate-create migrate-up migrate-down migrate-status
 
 # Build the application
 build:
@@ -7,6 +7,10 @@ build:
 # Run tests
 test:
 	go test ./... -v
+
+# Run integration tests against a real PostgreSQL container (requires Docker)
+test-integration:
+	go test -tags integration -count=1 ./integration/...
 
 # Clean build artifacts
 clean:
@@ -28,7 +32,7 @@ db-setup:
 
 # Database migrations
 migrate-create:
-	goose -dir migrations create $(name) sql
+	goose -dir migration create $(name) sql
 
 migrate-up:
 	goose -dir migration up
@@ -51,6 +55,7 @@ help:
 	@echo "Available commands:"
 	@echo "  build          - Build the application"
 	@echo "  test           - Run tests"
+	@echo "  test-integration - Run integration tests (requires Docker)"
 	@echo "  clean          - Clean build artifacts"
 	@echo "  docker-build   - Build Docker containers"
 	@echo "  docker-up      - Start Docker containers"

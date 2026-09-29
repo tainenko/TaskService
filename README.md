@@ -1,6 +1,6 @@
 # TaskService
 
-[![Go Version](https://img.shields.io/badge/Go-1.18%2B-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.26%2B-blue)](https://golang.org/)
 [![Documentation](https://img.shields.io/badge/docs-online-brightgreen)](https://tainenko.github.io/TaskService/)
 
 A RESTful Task Management API service built with Go.
@@ -29,7 +29,7 @@ and can be run using Docker.
 
 ## Requirements
 
-- Go 1.18+
+- Go 1.26+
 - PostgreSQL
 - Docker & Docker Compose
 
@@ -134,4 +134,10 @@ docker-compose down
 Run all tests with verbose output using:
 ```bash
 go test ./...
+```
+
+Integration tests run the whole HTTP API against a real PostgreSQL container (applying the
+migrations in `migration/`). They need Docker and are excluded from the default run:
+```bash
+make test-integration
 ```
