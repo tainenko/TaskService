@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github/TaskService/conf"
 	"github/TaskService/dao"
+	"github/TaskService/handler"
 	"github/TaskService/middleware"
 	"github/TaskService/router"
 	"gorm.io/driver/postgres"
@@ -61,6 +63,9 @@ func run(env string) error {
 			"message": "Welcome to the API",
 		})
 	})
+	health := handler.NewHealthHandler(sqlDB)
+	r.GET("/healthz", health.Healthz)
+	r.GET("/readyz", health.Readyz)
 	router.SetTaskRoute(r)
 
 	srv := &http.Server{
@@ -91,7 +96,7 @@ func run(env string) error {
 	return srv.Shutdown(shutdownCtx)
 }
 
-func setupDB(config conf.Database) (interface{ Close() error }, error) {
+func setupDB(config conf.Database) (*sql.DB, error) {
 	// url.URL escapes special characters in the credentials.
 	dsn := (&url.URL{
 		Scheme:   "postgres",

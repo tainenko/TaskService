@@ -19,6 +19,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    links:
-      - postgres
+    environment:
+      TASK_DATABASE_HOST: postgres:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/readyz || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: always
