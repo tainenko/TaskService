@@ -45,8 +45,8 @@ paths:
           name: status
           schema:
             type: integer
-            enum: [ 0, 1 ]
-          description: Filter by task status
+            enum: [ 0, 1, 2 ]
+          description: "Filter by task status (0 = todo, 1 = done, 2 = in progress)"
       responses:
         '200':
           description: Successful response
@@ -98,6 +98,25 @@ paths:
 
 
   /tasks/{id}:
+    get:
+      summary: Get task
+      description: Get a single task by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Task ID
+      responses:
+        '200':
+          description: Task found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Task not found
     put:
       summary: Update task
       description: Update an existing task by ID
@@ -144,6 +163,35 @@ paths:
                   message:
                     type: string
 
+  /tasks/{id}/status:
+    patch:
+      summary: Update task status
+      description: Change only the status of a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Task ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: integer
+                  enum: [ 0, 1, 2 ]
+      responses:
+        '200':
+          description: Status updated
+        '404':
+          description: Task not found
+
 components:
   schemas:
     Task:
@@ -157,8 +205,18 @@ components:
           description: Task name
         status:
           type: integer
-          enum: [ 0, 1 ]
-          description: 0 represents an incomplete task, while 1 represents a completed task
+          enum: [ 0, 1, 2 ]
+          description: 0 = todo, 1 = done, 2 = in progress
+        description:
+          type: string
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: integer
+          enum: [ 0, 1, 2 ]
+          description: 0 = low, 1 = medium, 2 = high
         created_at:
           type: string
           format: date-time
@@ -177,5 +235,15 @@ components:
           description: Task name
         status:
           type: integer
-          enum: [ 0, 1 ]
-          description: 0 represents an incomplete task, while 1 represents a completed task
+          enum: [ 0, 1, 2 ]
+          description: 0 = todo, 1 = done, 2 = in progress
+        description:
+          type: string
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: integer
+          enum: [ 0, 1, 2 ]
+          description: 0 = low, 1 = medium, 2 = high

@@ -10,9 +10,12 @@ import (
 	"github/TaskService/service"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type TaskServiceInterface interface {
+	GetTaskByID(ctx context.Context, id int32) (*model.Task, error)
+	UpdateTaskStatus(ctx context.Context, id, status int32) error
 	GetTasks(ctx context.Context, page, pageSize int, sort, order, name string, status *int32) ([]*model.Task, int64, error)
 	CreateTask(ctx context.Context, task *model.Task) error
 	UpdateTask(ctx context.Context, task *model.Task) error
@@ -27,9 +30,18 @@ func NewTaskHandler(taskService TaskServiceInterface) *TaskHandler {
 	return &TaskHandler{taskService: taskService}
 }
 
+// Task status values: 0 = todo, 1 = done, 2 = in progress.
+// Priority values: 0 = low, 1 = medium, 2 = high.
 type TaskRequest struct {
-	Name   string `json:"name" binding:"required"`
-	Status int32  `json:"status" binding:"oneof=0 1"`
+	Name        string     `json:"name" binding:"required,max=255"`
+	Status      int32      `json:"status" binding:"oneof=0 1 2"`
+	Description string     `json:"description"`
+	DueDate     *time.Time `json:"due_date"`
+	Priority    int32      `json:"priority" binding:"oneof=0 1 2"`
+}
+
+type TaskStatusRequest struct {
+	Status *int32 `json:"status" binding:"required,oneof=0 1 2"`
 }
 
 type PaginationResponse struct {
@@ -46,7 +58,7 @@ type TaskListRequest struct {
 	Sort     string `form:"sort" default:"id"`
 	Order    string `form:"order" default:"desc"`
 	Name     string `form:"name"`
-	Status   *int32 `form:"status"`
+	Status   *int32 `form:"status" binding:"omitempty,oneof=0 1 2"`
 }
 
 type TaskListResponse struct {
@@ -110,8 +122,11 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	task := &model.Task{
-		Name:   req.Name,
-		Status: req.Status,
+		Name:        req.Name,
+		Status:      req.Status,
+		Description: req.Description,
+		DueDate:     req.DueDate,
+		Priority:    req.Priority,
 	}
 
 	if err := h.taskService.CreateTask(c.Request.Context(), task); err != nil {
@@ -136,9 +151,12 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	task := &model.Task{
-		ID:     int32(id),
-		Name:   req.Name,
-		Status: req.Status,
+		ID:          int32(id),
+		Name:        req.Name,
+		Status:      req.Status,
+		Description: req.Description,
+		DueDate:     req.DueDate,
+		Priority:    req.Priority,
 	}
 
 	if err := h.taskService.UpdateTask(c.Request.Context(), task); err != nil {
@@ -170,4 +188,49 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	}
 
 	response.Success(c, "Task deleted successfully")
+}
+
+func (h *TaskHandler) GetTask(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	if err != nil || id <= 0 {
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
+		return
+	}
+
+	task, err := h.taskService.GetTaskByID(c.Request.Context(), int32(id))
+	if err != nil {
+		if errors.Is(err, service.ErrTaskNotFound) {
+			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
+			return
+		}
+		response.Fail(c, http.StatusInternalServerError, response.GetTaskErr, err.Error())
+		return
+	}
+
+	response.Success(c, task)
+}
+
+func (h *TaskHandler) UpdateTaskStatus(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	if err != nil || id <= 0 {
+		response.Fail(c, http.StatusBadRequest, response.InvalidParam, "invalid task id")
+		return
+	}
+
+	var req TaskStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, response.InvalidPayload, err.Error())
+		return
+	}
+
+	if err := h.taskService.UpdateTaskStatus(c.Request.Context(), int32(id), *req.Status); err != nil {
+		if errors.Is(err, service.ErrTaskNotFound) {
+			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
+			return
+		}
+		response.Fail(c, http.StatusInternalServerError, response.UpdateTaskErr, err.Error())
+		return
+	}
+
+	response.Success(c, "Task status updated successfully")
 }

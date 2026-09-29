@@ -42,6 +42,8 @@ Full documentation available at: https://tainenko.github.io/TaskService/
 | Method | Endpoint    | Description          |
 |--------|-------------|----------------------|
 | GET    | /tasks      | List all tasks       |
+| GET    | /tasks/{id} | Get a task           |
+| PATCH  | /tasks/{id}/status | Update task status |
 | POST   | /tasks      | Create a new task    |
 | PUT    | /tasks/{id} | Update existing task |
 | DELETE | /tasks/{id} | Delete a task        |
@@ -54,7 +56,10 @@ Each task has the following fields:
 |------------|-------------------|-------------------------------------------------|
 | id         | SERIAL            | Primary key, auto-incrementing identifier       |
 | name       | VARCHAR(255)      | Task name (required)                            |
-| status     | INTEGER           | Task status code (required)                     |
+| status     | INTEGER           | 0 = todo, 1 = done, 2 = in progress (required)  |
+| description | TEXT             | Task description, defaults to empty             |
+| due_date   | TIMESTAMP WITH TZ | Due date (optional)                             |
+| priority   | INTEGER           | 0 = low, 1 = medium, 2 = high                   |
 | created_at | TIMESTAMP WITH TZ | Creation timestamp, defaults to current time    |
 | updated_at | TIMESTAMP WITH TZ | Last update timestamp, defaults to current time |
 | deleted_at | TIMESTAMP WITH TZ | Soft deletion timestamp (optional)              |

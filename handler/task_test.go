@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github/TaskService/model"
+	"github/TaskService/service"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -23,6 +24,20 @@ func (m *MockTaskService) GetTasks(_ context.Context, page, pageSize int, sort, 
 }
 
 func (m *MockTaskService) UpdateTask(_ context.Context, task *model.Task) error {
+	return nil
+}
+
+func (m *MockTaskService) GetTaskByID(_ context.Context, id int32) (*model.Task, error) {
+	if id == 404 {
+		return nil, service.ErrTaskNotFound
+	}
+	return &model.Task{ID: id, Name: "t"}, nil
+}
+
+func (m *MockTaskService) UpdateTaskStatus(_ context.Context, id, status int32) error {
+	if id == 404 {
+		return service.ErrTaskNotFound
+	}
 	return nil
 }
 
@@ -236,3 +251,68 @@ func TestTaskHandler_UpdateTask(t *testing.T) {
 		})
 	}
 }
+
+func doRequest(t *testing.T, h gin.HandlerFunc, method, path, route, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	r := gin.New()
+	r.Handle(method, route, h)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(method, path, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestTaskHandler_GetTask(t *testing.T) {
+	h := NewTaskHandler(&MockTaskService{})
+	tests := []struct {
+		path string
+		want int
+	}{
+		{"/tasks/1", http.StatusOK},
+		{"/tasks/404", http.StatusNotFound},
+		{"/tasks/abc", http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			w := doRequest(t, h.GetTask, http.MethodGet, tt.path, "/tasks/:id", "")
+			if w.Code != tt.want {
+				t.Errorf("status = %d, want %d", w.Code, tt.want)
+			}
+		})
+	}
+}
+
+func TestTaskHandler_UpdateTaskStatus(t *testing.T) {
+	h := NewTaskHandler(&MockTaskService{})
+	tests := []struct {
+		name, path, body string
+		want             int
+	}{
+		{"ok", "/tasks/1/status", `{"status":2}`, http.StatusOK},
+		{"zero status is valid", "/tasks/1/status", `{"status":0}`, http.StatusOK},
+		{"missing status", "/tasks/1/status", `{}`, http.StatusBadRequest},
+		{"invalid status", "/tasks/1/status", `{"status":9}`, http.StatusBadRequest},
+		{"not found", "/tasks/404/status", `{"status":1}`, http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := doRequest(t, h.UpdateTaskStatus, http.MethodPatch, tt.path, "/tasks/:id/status", tt.body)
+			if w.Code != tt.want {
+				t.Errorf("status = %d, want %d (%s)", w.Code, tt.want, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestTaskHandler_UpdateTask_NotFound(t *testing.T) {
+	h := NewTaskHandler(&notFoundService{})
+	w := doRequest(t, h.UpdateTask, http.MethodPut, "/tasks/1", "/tasks/:id", `{"name":"a","status":0}`)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", w.Code)
+	}
+}
+
+type notFoundService struct{ MockTaskService }
+
+func (notFoundService) UpdateTask(context.Context, *model.Task) error { return service.ErrTaskNotFound }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github/TaskService/dao"
 	"github/TaskService/model"
+	"gorm.io/gorm"
 	"strings"
 )
 
@@ -62,7 +63,7 @@ func (s *TaskService) CreateTask(ctx context.Context, task *model.Task) error {
 func (s *TaskService) UpdateTask(ctx context.Context, task *model.Task) error {
 	// Select is required so that zero values (e.g. status 0) are written too.
 	info, err := s.q.Task.WithContext(ctx).
-		Select(s.q.Task.Name, s.q.Task.Status).
+		Select(s.q.Task.Name, s.q.Task.Status, s.q.Task.Description, s.q.Task.DueDate, s.q.Task.Priority).
 		Where(s.q.Task.ID.Eq(task.ID)).
 		Updates(task)
 	if err != nil {
@@ -86,7 +87,25 @@ func (s *TaskService) DeleteTask(ctx context.Context, id int32) error {
 }
 
 func (s *TaskService) GetTaskByID(ctx context.Context, id int32) (*model.Task, error) {
-	return s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).First()
+	task, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTaskNotFound
+	}
+	return task, err
+}
+
+// UpdateTaskStatus changes only the status of a task.
+func (s *TaskService) UpdateTaskStatus(ctx context.Context, id, status int32) error {
+	info, err := s.q.Task.WithContext(ctx).
+		Where(s.q.Task.ID.Eq(id)).
+		Update(s.q.Task.Status, status)
+	if err != nil {
+		return err
+	}
+	if info.RowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+	return nil
 }
 
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)

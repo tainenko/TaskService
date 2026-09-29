@@ -12,7 +12,9 @@ func SetTaskRoute(r *gin.Engine) {
 	taskHandler := handler.NewTaskHandler(s)
 	task := r.Group("/")
 	task.GET("/tasks", taskHandler.GetTasks)
+	task.GET("/tasks/:id", taskHandler.GetTask)
 	task.POST("/tasks", taskHandler.CreateTask)
 	task.PUT("/tasks/:id", taskHandler.UpdateTask)
+	task.PATCH("/tasks/:id/status", taskHandler.UpdateTaskStatus)
 	task.DELETE("/tasks/:id", taskHandler.DeleteTask)
 }

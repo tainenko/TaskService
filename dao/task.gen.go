@@ -30,6 +30,9 @@ func newTask(db *gorm.DB, opts ...gen.DOOption) task {
 	_task.ID = field.NewInt32(tableName, "id")
 	_task.Name = field.NewString(tableName, "name")
 	_task.Status = field.NewInt32(tableName, "status")
+	_task.Description = field.NewString(tableName, "description")
+	_task.DueDate = field.NewTime(tableName, "due_date")
+	_task.Priority = field.NewInt32(tableName, "priority")
 	_task.CreatedAt = field.NewTime(tableName, "created_at")
 	_task.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_task.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -42,13 +45,16 @@ func newTask(db *gorm.DB, opts ...gen.DOOption) task {
 type task struct {
 	taskDo taskDo
 
-	ALL       field.Asterisk
-	ID        field.Int32
-	Name      field.String
-	Status    field.Int32
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
+	ALL         field.Asterisk
+	ID          field.Int32
+	Name        field.String
+	Status      field.Int32
+	Description field.String
+	DueDate     field.Time
+	Priority    field.Int32
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -68,6 +74,9 @@ func (t *task) updateTableName(table string) *task {
 	t.ID = field.NewInt32(table, "id")
 	t.Name = field.NewString(table, "name")
 	t.Status = field.NewInt32(table, "status")
+	t.Description = field.NewString(table, "description")
+	t.DueDate = field.NewTime(table, "due_date")
+	t.Priority = field.NewInt32(table, "priority")
 	t.CreatedAt = field.NewTime(table, "created_at")
 	t.UpdatedAt = field.NewTime(table, "updated_at")
 	t.DeletedAt = field.NewField(table, "deleted_at")
@@ -95,10 +104,13 @@ func (t *task) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (t *task) fillFieldMap() {
-	t.fieldMap = make(map[string]field.Expr, 6)
+	t.fieldMap = make(map[string]field.Expr, 9)
 	t.fieldMap["id"] = t.ID
 	t.fieldMap["name"] = t.Name
 	t.fieldMap["status"] = t.Status
+	t.fieldMap["description"] = t.Description
+	t.fieldMap["due_date"] = t.DueDate
+	t.fieldMap["priority"] = t.Priority
 	t.fieldMap["created_at"] = t.CreatedAt
 	t.fieldMap["updated_at"] = t.UpdatedAt
 	t.fieldMap["deleted_at"] = t.DeletedAt

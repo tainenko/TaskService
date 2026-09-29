@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 func TestTaskService_CreateTask(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO "task"`).
-		WithArgs("name", 1, nil).
+		WithArgs("name", 1, "", nil, 0, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), time.Now()))
 	mock.ExpectCommit()
 
@@ -183,10 +183,13 @@ func TestTaskService_UpdateTask(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"updated_at"=\$3 WHERE "task"."id" = \$4 AND "task"."deleted_at" IS NULL AND "id" = \$5$`).
+	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"description"=\$3,"due_date"=\$4,"priority"=\$5,"updated_at"=\$6 WHERE "task"."id" = \$7 AND "task"."deleted_at" IS NULL AND "id" = \$8$`).
 		WithArgs(
 			updated.Name,
 			updated.Status,
+			updated.Description,
+			sqlmock.AnyArg(),
+			updated.Priority,
 			sqlmock.AnyArg(),
 			updated.ID,
 			updated.ID,
@@ -205,4 +208,38 @@ func TestTaskService_UpdateTask(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("UpdateTask(): %s", err)
 	}
+}
+
+func TestTaskService_UpdateTask_NotFound(t *testing.T) {
+	mock.ExpectBegin()
+	mock.ExpectExec(`^UPDATE "task"`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	s := &TaskService{q: q}
+	err := s.UpdateTask(context.Background(), &model.Task{ID: 99, Name: "x"})
+	assert.ErrorIs(t, err, ErrTaskNotFound)
+}
+
+func TestTaskService_UpdateTaskStatus(t *testing.T) {
+	mock.ExpectBegin()
+	mock.ExpectExec(`^UPDATE "task" SET "status"=\$1,"updated_at"=\$2 WHERE "task"."id" = \$3 AND "task"."deleted_at" IS NULL$`).
+		WithArgs(0, sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	s := &TaskService{q: q}
+	assert.NoError(t, s.UpdateTaskStatus(context.Background(), 1, 0))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestTaskService_GetTaskByID_NotFound(t *testing.T) {
+	mock.ExpectQuery(`^SELECT \* FROM "task"`).WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	s := &TaskService{q: q}
+	_, err := s.GetTaskByID(context.Background(), 99)
+	assert.ErrorIs(t, err, ErrTaskNotFound)
+}
+
+func TestEscapeLike(t *testing.T) {
+	assert.Equal(t, `50\% \_done\\`, escapeLike(`50% _done\`))
 }
