@@ -16,16 +16,17 @@ func _() {
 	_ = x[UpdateTaskErr-20003]
 	_ = x[DeleteTaskErr-20004]
 	_ = x[GetTaskErr-20005]
+	_ = x[TaskNotFound-20006]
 }
 
 const (
 	_ErrCode_name_0 = "Server ErrorInvalid ParamInvalid Payload"
-	_ErrCode_name_1 = "Insert Task ErrorGet Tasks ErrorUpdate Task ErrorDelete Task ErrorGet Task Error"
+	_ErrCode_name_1 = "Insert Task ErrorGet Tasks ErrorUpdate Task ErrorDelete Task ErrorGet Task ErrorTask Not Found"
 )
 
 var (
 	_ErrCode_index_0 = [...]uint8{0, 12, 25, 40}
-	_ErrCode_index_1 = [...]uint8{0, 17, 32, 49, 66, 80}
+	_ErrCode_index_1 = [...]uint8{0, 17, 32, 49, 66, 80, 94}
 )
 
 func (i ErrCode) String() string {
@@ -33,7 +34,7 @@ func (i ErrCode) String() string {
 	case 10001 <= i && i <= 10003:
 		i -= 10001
 		return _ErrCode_name_0[_ErrCode_index_0[i]:_ErrCode_index_0[i+1]]
-	case 20001 <= i && i <= 20005:
+	case 20001 <= i && i <= 20006:
 		i -= 20001
 		return _ErrCode_name_1[_ErrCode_index_1[i]:_ErrCode_index_1[i+1]]
 	default:

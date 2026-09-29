@@ -18,4 +18,5 @@ const (
 	UpdateTaskErr                        // Update Task Error
 	DeleteTaskErr                        // Delete Task Error
 	GetTaskErr                           // Get Task Error
+	TaskNotFound                         // Task Not Found
 )

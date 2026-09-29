@@ -57,3 +57,12 @@ func Success(c *gin.Context, data interface{}) {
 		Data:    data,
 	})
 }
+
+// Created sends a JSON success response with HTTP status 201 and the specified data
+func Created(c *gin.Context, data interface{}) {
+	c.JSON(201, Result{
+		Code:    0,
+		Message: "",
+		Data:    data,
+	})
+}

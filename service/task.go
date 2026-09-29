@@ -2,9 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github/TaskService/dao"
 	"github/TaskService/model"
+	"strings"
 )
+
+// ErrTaskNotFound is returned when the target task does not exist.
+var ErrTaskNotFound = errors.New("task not found")
 
 type TaskService struct {
 	q *dao.Query
@@ -22,7 +27,7 @@ func (s *TaskService) GetTasks(ctx context.Context, page, pageSize int, sort, or
 	}
 
 	if name != "" {
-		q = q.Where(s.q.Task.Name.Like("%" + name + "%"))
+		q = q.Where(s.q.Task.Name.Like("%" + escapeLike(name) + "%"))
 	}
 
 	total, err := q.Count()
@@ -30,14 +35,19 @@ func (s *TaskService) GetTasks(ctx context.Context, page, pageSize int, sort, or
 		return nil, 0, err
 	}
 
+	sortedByID := sort == "" || sort == "id"
 	if sort != "" {
 		if field, ok := s.q.Task.GetFieldByName(sort); ok {
 			if order == "asc" {
 				q = q.Order(field.Asc())
-			} else if order == "desc" {
+			} else {
 				q = q.Order(field.Desc())
 			}
 		}
+	}
+	// Tie-breaker keeps pagination stable when the sort column has duplicates.
+	if !sortedByID {
+		q = q.Order(s.q.Task.ID.Desc())
 	}
 
 	offset := (page - 1) * pageSize
@@ -50,15 +60,38 @@ func (s *TaskService) CreateTask(ctx context.Context, task *model.Task) error {
 }
 
 func (s *TaskService) UpdateTask(ctx context.Context, task *model.Task) error {
-	_, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(task.ID)).Updates(task)
-	return err
+	// Select is required so that zero values (e.g. status 0) are written too.
+	info, err := s.q.Task.WithContext(ctx).
+		Select(s.q.Task.Name, s.q.Task.Status).
+		Where(s.q.Task.ID.Eq(task.ID)).
+		Updates(task)
+	if err != nil {
+		return err
+	}
+	if info.RowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+	return nil
 }
 
 func (s *TaskService) DeleteTask(ctx context.Context, id int32) error {
-	_, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).Delete()
-	return err
+	info, err := s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).Delete()
+	if err != nil {
+		return err
+	}
+	if info.RowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+	return nil
 }
 
 func (s *TaskService) GetTaskByID(ctx context.Context, id int32) (*model.Task, error) {
 	return s.q.Task.WithContext(ctx).Where(s.q.Task.ID.Eq(id)).First()
+}
+
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// escapeLike escapes LIKE wildcards so user input is matched literally.
+func escapeLike(s string) string {
+	return likeEscaper.Replace(s)
 }

@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"github.com/creasty/defaults"
 	"github.com/gin-gonic/gin"
 	"github/TaskService/model"
 	"github/TaskService/response"
+	"github/TaskService/service"
 	"net/http"
 	"strconv"
 )
@@ -117,7 +119,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, TaskResponse{ID: task.ID})
+	response.Created(c, TaskResponse{ID: task.ID})
 }
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
@@ -140,6 +142,10 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	if err := h.taskService.UpdateTask(c.Request.Context(), task); err != nil {
+		if errors.Is(err, service.ErrTaskNotFound) {
+			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
+			return
+		}
 		response.Fail(c, http.StatusInternalServerError, response.UpdateTaskErr, err.Error())
 		return
 	}
@@ -155,6 +161,10 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	}
 
 	if err := h.taskService.DeleteTask(c.Request.Context(), int32(id)); err != nil {
+		if errors.Is(err, service.ErrTaskNotFound) {
+			response.Fail(c, http.StatusNotFound, response.TaskNotFound, err.Error())
+			return
+		}
 		response.Fail(c, http.StatusInternalServerError, response.DeleteTaskErr, err.Error())
 		return
 	}

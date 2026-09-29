@@ -183,11 +183,10 @@ func TestTaskService_UpdateTask(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"created_at"=\$3,"updated_at"=\$4 WHERE "task"."id" = \$5 AND "task"."deleted_at" IS NULL AND "id" = \$6$`).
+	mock.ExpectExec(`^UPDATE "task" SET "name"=\$1,"status"=\$2,"updated_at"=\$3 WHERE "task"."id" = \$4 AND "task"."deleted_at" IS NULL AND "id" = \$5$`).
 		WithArgs(
 			updated.Name,
 			updated.Status,
-			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			updated.ID,
 			updated.ID,
